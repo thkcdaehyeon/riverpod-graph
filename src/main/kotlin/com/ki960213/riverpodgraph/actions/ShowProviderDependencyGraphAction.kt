@@ -3,10 +3,19 @@ package com.ki960213.riverpodgraph.actions
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.indexing.FileBasedIndex
+import com.ki960213.riverpodgraph.activation.RiverpodActivationService
+import com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzer
+import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
+import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.resolution.RiverpodProviderResolver
 import com.ki960213.riverpodgraph.ui.DependencyGraphPanel
@@ -18,14 +27,18 @@ class ShowProviderDependencyGraphAction : AnAction() {
         if (!file.isRelevantDartFile()) {
             return
         }
+        if (!RiverpodActivationService.getInstance(project).isFileActive(file)) {
+            return
+        }
 
         val declaration = declarationFromContext(e) ?: return
+        val edges = dependencyEdges(project, file, declaration)
         val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID) ?: return
 
         toolWindow.show(
             Runnable {
                 DependencyGraphPanel.findIn(toolWindow.component)?.let { graphPanel ->
-                    graphPanel.showProvider(declaration.providerName)
+                    graphPanel.showProviderGraph(declaration.providerName, edges)
                     DependencyGraphPanel.selectTabContaining(toolWindow.component, graphPanel)
                 }
             },
@@ -36,7 +49,10 @@ class ShowProviderDependencyGraphAction : AnAction() {
         val file = e.getData(CommonDataKeys.PSI_FILE)
         val editor = e.getData(CommonDataKeys.EDITOR)
         val element = e.getData(CommonDataKeys.PSI_ELEMENT)
-        val relevant = e.project != null && file?.isRelevantDartFile() == true &&
+        val project = e.project
+        val relevant = project != null &&
+            file?.isRelevantDartFile() == true &&
+            RiverpodActivationService.getInstance(project).isFileActive(file) &&
             symbolCandidates(file, editor, element).isNotEmpty()
 
         e.presentation.isEnabled = relevant
@@ -52,6 +68,54 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
         return symbolCandidates(file, editor, element)
             .firstNotNullOfOrNull { symbol -> withAvailableIndex { resolver.findDeclaration(symbol) } }
+    }
+
+    private fun dependencyEdges(
+        project: Project,
+        file: PsiFile,
+        declaration: RiverpodProviderDeclaration,
+    ): List<RiverpodDependencyEdge> {
+        return withAvailableIndex {
+            ReadAction.compute<List<RiverpodDependencyEdge>, RuntimeException> {
+                val filePath = file.virtualFile?.path ?: file.name
+                val declarations = providerDeclarationsInReadAction(project).withDeclaration(declaration)
+                providerGraphEdges(filePath, file.text, declarations)
+            }
+        }.orEmpty()
+    }
+
+    private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
+        val index = FileBasedIndex.getInstance()
+        val scope = GlobalSearchScope.projectScope(project)
+        val values = index.getAllKeys(RiverpodProviderIndex.NAME, project)
+            .flatMap { key -> index.getValues(RiverpodProviderIndex.NAME, key, scope) }
+
+        return providerDeclarationsFromIndexValues(values)
+    }
+
+    private fun providerDeclarationsFromIndexValues(
+        values: Collection<RiverpodProviderIndexValue>,
+    ): List<RiverpodProviderDeclaration> = values
+        .map { it.toDeclaration() }
+        .sortedWith(
+            compareBy<RiverpodProviderDeclaration> { it.filePath }
+                .thenBy { it.textOffset }
+                .thenBy { it.sourceName }
+                .thenBy { it.providerName },
+        )
+        .distinctBy { declaration ->
+            Triple(declaration.providerName, declaration.filePath, declaration.textOffset)
+        }
+
+    private fun List<RiverpodProviderDeclaration>.withDeclaration(
+        declaration: RiverpodProviderDeclaration,
+    ): List<RiverpodProviderDeclaration> {
+        val key = Triple(declaration.providerName, declaration.filePath, declaration.textOffset)
+        if (any { Triple(it.providerName, it.filePath, it.textOffset) == key }) {
+            return this
+        }
+
+        return this + declaration
     }
 
     private fun symbolCandidates(
@@ -142,6 +206,19 @@ class ShowProviderDependencyGraphAction : AnAction() {
         const val TOOL_WINDOW_ID = "Riverpod Graph"
         val IDENTIFIER_REGEX = Regex("""[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*""")
         val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
+
+        internal fun providerGraphEdges(
+            filePath: String,
+            content: String,
+            declarations: List<RiverpodProviderDeclaration>,
+        ): List<RiverpodDependencyEdge> =
+            ProviderDependencyAnalyzer.markCycles(
+                ProviderDependencyAnalyzer.analyzeFile(
+                    filePath = filePath,
+                    content = content,
+                    declarations = declarations,
+                ),
+            )
 
         fun isProviderChainChar(char: Char): Boolean =
             char == '.' || char == '_' || char == '$' || char.isLetterOrDigit() || char.isWhitespace()

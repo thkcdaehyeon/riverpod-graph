@@ -18,6 +18,7 @@ import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.analysis.ProviderUsageScanner
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
+import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 
@@ -25,6 +26,16 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
     override fun processQuery(queryParameters: ReferencesSearch.SearchParameters, consumer: Processor<in PsiReference>) {
         val element = queryParameters.elementToSearch
         val project = element.project
+        val activationService = RiverpodActivationService.getInstance(project)
+        val elementFile = element.containingFile
+        if (elementFile != null) {
+            if (!activationService.isFileActive(elementFile)) {
+                return
+            }
+        } else if (!activationService.isProjectActive()) {
+            return
+        }
+
         val searchScope = queryParameters.effectiveSearchScope
         val indexScope = searchScope as? GlobalSearchScope ?: GlobalSearchScope.projectScope(project)
         val providerTarget = providerTargetFor(element.text, indexScope) ?: return

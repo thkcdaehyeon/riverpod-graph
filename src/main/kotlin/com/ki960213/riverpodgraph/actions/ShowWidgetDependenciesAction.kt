@@ -3,17 +3,22 @@ package com.ki960213.riverpodgraph.actions
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
+import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzer
+import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -21,30 +26,36 @@ import com.ki960213.riverpodgraph.ui.WidgetDependencyDialog
 
 class ShowWidgetDependenciesAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
         if (!file.isRelevantDartFile()) {
             return
         }
+        if (!RiverpodActivationService.getInstance(project).isFileActive(file)) {
+            return
+        }
 
-        val declarations = providerDeclarations(e.project)
-        val providerNames = declarations.map { it.providerName }.toSet()
-            .ifEmpty { fallbackProviderNames(file.text) }
-        val filePath = file.virtualFile?.path ?: file.name
-        val extensionDependencies = extensionDependencies(e.project, providerNames, filePath, file.text)
-        val result = WidgetDependencyAnalyzer.analyze(
-            filePath = filePath,
-            content = file.text,
-            providerNames = providerNames,
-            depthLimit = 5,
-            caretOffset = e.getData(CommonDataKeys.EDITOR)?.caretModel?.offset,
-            declarations = declarations,
-            extensionDependencies = extensionDependencies,
+        val caretOffset = e.getData(CommonDataKeys.EDITOR)?.caretModel?.offset
+        ProgressManager.getInstance().run(
+            object : Task.Backgroundable(project, "Analyze Riverpod Widget Dependencies", false) {
+                override fun run(indicator: ProgressIndicator) {
+                    val result = analyzeWidgetDependencies(project, file, caretOffset) ?: return
+                    ApplicationManager.getApplication().invokeLater {
+                        if (!project.isDisposed) {
+                            WidgetDependencyDialog(project, result).show()
+                        }
+                    }
+                }
+            },
         )
-        WidgetDependencyDialog(e.project, result).show()
     }
 
     override fun update(e: AnActionEvent) {
-        val relevant = e.getData(CommonDataKeys.PSI_FILE)?.isRelevantDartFile() == true
+        val project = e.project
+        val file = e.getData(CommonDataKeys.PSI_FILE)
+        val relevant = project != null &&
+            file?.isRelevantDartFile() == true &&
+            RiverpodActivationService.getInstance(project).isFileActive(file)
         e.presentation.isEnabled = relevant
         e.presentation.isVisible = relevant
     }
@@ -54,21 +65,42 @@ class ShowWidgetDependenciesAction : AnAction() {
         return fileName.endsWith(".dart") && !fileName.endsWith(".g.dart")
     }
 
-    private fun providerDeclarations(project: Project?): List<RiverpodProviderDeclaration> {
-        if (project == null) {
-            return emptyList()
+    private fun analyzeWidgetDependencies(
+        project: Project,
+        file: PsiFile,
+        caretOffset: Int?,
+    ): WidgetDependencyResult? = ReadAction.compute<WidgetDependencyResult?, RuntimeException> {
+        if (!file.isValid) {
+            return@compute null
         }
 
-        return withAvailableIndex {
-            ReadAction.compute<List<RiverpodProviderDeclaration>, RuntimeException> {
-                val index = FileBasedIndex.getInstance()
-                val scope = GlobalSearchScope.projectScope(project)
-                val values = index.getAllKeys(RiverpodProviderIndex.NAME, project)
-                    .flatMap { key -> index.getValues(RiverpodProviderIndex.NAME, key, scope) }
+        val filePath = file.virtualFile?.path ?: file.name
+        val content = file.text
+        val declarations = withAvailableIndex { providerDeclarationsInReadAction(project) }.orEmpty()
+        val providerNames = declarations.map { it.providerName }.toSet()
+            .ifEmpty { fallbackProviderNames(content) }
+        val extensionDependencies = withAvailableIndex {
+            extensionDependenciesInReadAction(project, providerNames)
+        } ?: RefExtensionScanner.scan(filePath, content, providerNames)
 
-                providerDeclarationsFromIndexValues(values)
-            }
-        }.orEmpty()
+        WidgetDependencyAnalyzer.analyze(
+            filePath = filePath,
+            content = content,
+            providerNames = providerNames,
+            depthLimit = 5,
+            caretOffset = caretOffset,
+            declarations = declarations,
+            extensionDependencies = extensionDependencies,
+        )
+    }
+
+    private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
+        val index = FileBasedIndex.getInstance()
+        val scope = GlobalSearchScope.projectScope(project)
+        val values = index.getAllKeys(RiverpodProviderIndex.NAME, project)
+            .flatMap { key -> index.getValues(RiverpodProviderIndex.NAME, key, scope) }
+
+        return providerDeclarationsFromIndexValues(values)
     }
 
     private fun providerDeclarationsFromIndexValues(
@@ -85,45 +117,36 @@ class ShowWidgetDependenciesAction : AnAction() {
             Triple(declaration.providerName, declaration.filePath, declaration.textOffset)
         }
 
-    private fun extensionDependencies(
-        project: Project?,
+    private fun extensionDependenciesInReadAction(
+        project: Project,
         providerNames: Set<String>,
-        currentFilePath: String,
-        currentText: String,
     ): List<RefExtensionDependency> {
         if (providerNames.isEmpty()) {
             return emptyList()
         }
-        if (project == null) {
-            return RefExtensionScanner.scan(currentFilePath, currentText, providerNames)
-        }
 
-        return withAvailableIndex {
-            ReadAction.compute<List<RefExtensionDependency>, RuntimeException> {
-                val scope = GlobalSearchScope.projectScope(project)
-                val psiManager = PsiManager.getInstance(project)
+        val scope = GlobalSearchScope.projectScope(project)
+        val psiManager = PsiManager.getInstance(project)
 
-                FilenameIndex.getAllFilesByExt(project, "dart", scope)
-                    .asSequence()
-                    .filter { file -> file.name.endsWith(".dart") && !file.name.endsWith(".g.dart") }
-                    .flatMap { file ->
-                        ProgressManager.checkCanceled()
-                        val psiFile = psiManager.findFile(file) ?: return@flatMap emptySequence()
-                        val text = psiFile.text
-                        if (!mayContainRefExtension(text, providerNames)) {
-                            emptySequence()
-                        } else {
-                            RefExtensionScanner.scan(
-                                filePath = file.path,
-                                content = text,
-                                providerNames = providerNames,
-                            ).asSequence()
-                        }
-                    }
-                    .distinct()
-                    .toList()
+        return FilenameIndex.getAllFilesByExt(project, "dart", scope)
+            .asSequence()
+            .filter { file -> file.name.endsWith(".dart") && !file.name.endsWith(".g.dart") }
+            .flatMap { file ->
+                ProgressManager.checkCanceled()
+                val psiFile = psiManager.findFile(file) ?: return@flatMap emptySequence()
+                val text = psiFile.text
+                if (!mayContainRefExtension(text, providerNames)) {
+                    emptySequence()
+                } else {
+                    RefExtensionScanner.scan(
+                        filePath = file.path,
+                        content = text,
+                        providerNames = providerNames,
+                    ).asSequence()
+                }
             }
-        } ?: RefExtensionScanner.scan(currentFilePath, currentText, providerNames)
+            .distinct()
+            .toList()
     }
 
     private fun mayContainRefExtension(text: String, providerNames: Set<String>): Boolean {

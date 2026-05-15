@@ -5,11 +5,13 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiFile
 
 @Service(Service.Level.PROJECT)
 class RiverpodActivationService(private val project: Project) {
@@ -18,6 +20,16 @@ class RiverpodActivationService(private val project: Project) {
     }
 
     fun isModuleActive(module: Module): Boolean = readAction {
+        isModuleActiveInReadAction(module)
+    }
+
+    fun isFileActive(psiFile: PsiFile): Boolean {
+        val virtualFile = psiFile.virtualFile ?: return isProjectActive()
+        return isFileActive(virtualFile)
+    }
+
+    fun isFileActive(virtualFile: VirtualFile): Boolean = readAction {
+        val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return@readAction false
         isModuleActiveInReadAction(module)
     }
 

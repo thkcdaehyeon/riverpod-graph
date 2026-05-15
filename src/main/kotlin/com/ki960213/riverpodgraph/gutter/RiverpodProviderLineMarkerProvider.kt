@@ -5,11 +5,14 @@ import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.psi.PsiElement
+import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import java.util.Locale
 
 class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         if (!isRiverpodAnnotationElement(element)) return null
+        val file = element.containingFile ?: return null
+        if (!RiverpodActivationService.getInstance(element.project).isFileActive(file)) return null
 
         return LineMarkerInfo(
             element,

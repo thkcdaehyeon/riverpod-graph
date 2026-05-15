@@ -1,6 +1,10 @@
 package com.ki960213.riverpodgraph.ui
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
@@ -23,7 +27,6 @@ class RiverpodToolWindowFactory : ToolWindowFactory {
         }
 
         val providersPanel = ProvidersPanel()
-        providersPanel.setProviders(loadProviders(project))
 
         val tabs = JTabbedPane().apply {
             addTab("Providers", providersPanel)
@@ -35,9 +38,25 @@ class RiverpodToolWindowFactory : ToolWindowFactory {
             false,
         )
         toolWindow.contentManager.addContent(content)
+        loadProvidersInBackground(project, providersPanel)
     }
 
     companion object {
+        private fun loadProvidersInBackground(project: Project, providersPanel: ProvidersPanel) {
+            ProgressManager.getInstance().run(
+                object : Task.Backgroundable(project, "Load Riverpod Providers", false) {
+                    override fun run(indicator: ProgressIndicator) {
+                        val providers = loadProviders(project)
+                        ApplicationManager.getApplication().invokeLater {
+                            if (!project.isDisposed) {
+                                providersPanel.setProviders(providers)
+                            }
+                        }
+                    }
+                },
+            )
+        }
+
         internal fun loadProviders(project: Project): List<RiverpodProviderDeclaration> =
             ReadAction.compute<List<RiverpodProviderDeclaration>, RuntimeException> {
                 val index = FileBasedIndex.getInstance()

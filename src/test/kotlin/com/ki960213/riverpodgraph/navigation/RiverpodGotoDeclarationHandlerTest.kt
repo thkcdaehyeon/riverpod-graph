@@ -10,6 +10,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
 
 class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
+    override fun setUp() {
+        super.setUp()
+        addRiverpodPubspec()
+    }
+
     fun testRedirectsProviderSymbolToSourceDeclaration() {
         myFixture.configureByText(
             "user.dart",
@@ -177,5 +182,16 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         override fun getText(): String = text
         override fun getTextOffset(): Int = offset
         override fun getTextRange(): TextRange = TextRange.from(offset, text.length)
+    }
+
+    private fun addRiverpodPubspec() {
+        myFixture.addFileToProject(
+            "pubspec.yaml",
+            """
+            name: test_app
+            dependencies:
+              riverpod_annotation: ^3.0.0
+            """.trimIndent(),
+        )
     }
 }

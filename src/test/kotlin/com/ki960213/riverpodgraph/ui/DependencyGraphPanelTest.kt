@@ -1,5 +1,9 @@
 package com.ki960213.riverpodgraph.ui
 
+import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
+import com.ki960213.riverpodgraph.model.RiverpodMarker
+import com.ki960213.riverpodgraph.model.RiverpodUsageKind
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
 import javax.swing.JTabbedPane
@@ -42,5 +46,42 @@ class DependencyGraphPanelTest {
         DependencyGraphPanel.selectTabContaining(tabs, graphPanel)
 
         assertSame(graphPanel, tabs.selectedComponent)
+    }
+
+    @Test
+    fun `renders selected provider outgoing dependency rows with usage and marker labels`() {
+        val panel = DependencyGraphPanel()
+
+        panel.showProviderGraph(
+            "profileProvider",
+            listOf(
+                RiverpodDependencyEdge(
+                    fromProvider = "profileProvider",
+                    toProvider = "userProvider",
+                    usageKind = RiverpodUsageKind.WATCH,
+                    marker = RiverpodMarker.CYCLE,
+                ),
+                RiverpodDependencyEdge(
+                    fromProvider = "profileProvider",
+                    toProvider = "sessionProvider",
+                    usageKind = RiverpodUsageKind.EXTENSION_MEMBER,
+                    marker = RiverpodMarker.REF_EXTENSION,
+                ),
+                RiverpodDependencyEdge(
+                    fromProvider = "otherProvider",
+                    toProvider = "ignoredProvider",
+                    usageKind = RiverpodUsageKind.READ,
+                ),
+            ),
+        )
+
+        assertEquals("profileProvider", panel.selectedProvider)
+        assertEquals(
+            listOf(
+                "sessionProvider [extension member] [ref extension]",
+                "userProvider [watch] [cycle]",
+            ),
+            panel.dependencyRows(),
+        )
     }
 }

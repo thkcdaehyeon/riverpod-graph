@@ -7,6 +7,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.impl.FakePsiElement
+import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
 import com.ki960213.riverpodgraph.resolution.RiverpodProviderResolver
@@ -14,7 +15,11 @@ import com.ki960213.riverpodgraph.resolution.RiverpodProviderResolver
 class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
     override fun getGotoDeclarationTargets(sourceElement: PsiElement?, offset: Int, editor: Editor): Array<PsiElement>? {
         val element = sourceElement ?: return null
-        if (!isDartFile(element)) {
+        val file = element.containingFile ?: return null
+        if (!isDartFile(file)) {
+            return null
+        }
+        if (!RiverpodActivationService.getInstance(element.project).isFileActive(file)) {
             return null
         }
 
@@ -54,8 +59,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         return TextOffsetPsiElement(file, declaration.sourceName, declaration.textOffset)
     }
 
-    private fun isDartFile(element: PsiElement): Boolean {
-        val file = element.containingFile ?: return false
+    private fun isDartFile(file: PsiFile): Boolean {
         val fileName = file.virtualFile?.name ?: file.name
         return fileName.endsWith(".dart")
     }
