@@ -10,7 +10,7 @@
 1. IntelliJ IDEA Ultimate/Community + Dart 플러그인
 2. Android Studio + Flutter 플러그인 (Dart 플러그인 번들 포함)
 
-현재 프로젝트는 IntelliJ 2025.3.4.1 (Ultimate) 의존, `com.intellij.modules.compose` 의존, Compose for Desktop UI 사용 가정. Android Studio는 Compose 모듈을 번들하지 않으므로 호환성 충돌 발생.
+초기 프로젝트는 IntelliJ 2025.3.4.1 의존, `com.intellij.modules.compose` 의존, Compose for Desktop UI 사용 가정. Android Studio는 Compose 모듈을 번들하지 않으므로 호환성 충돌 발생.
 
 ## 결정
 
@@ -18,7 +18,8 @@
 - `com.intellij.modules.compose` 의존 제거
 - 플러그인 UI는 **Swing** (IntelliJ Platform 기본 UI 툴킷)
 - Dart 플러그인을 명시적 의존으로 선언 (`<depends>Dart</depends>`)
-- 플랫폼 베이스라인은 IntelliJ Community (AS의 기반)에 맞춤
+- 플랫폼 베이스라인은 IntelliJ Platform 공통 API에 맞춤
+- IntelliJ IDEA 2025.3 이후는 Community/Ultimate 분리 대신 통합 IntelliJ IDEA 배포판을 대상으로 함
 
 ## 대안
 
@@ -31,4 +32,6 @@
 - `build.gradle.kts`에서 `composeUI()` 제거, `kotlin.plugin.compose` 플러그인 제거
 - `plugin.xml`에서 `com.intellij.modules.compose` 의존 제거, `Dart` 플러그인 의존 추가
 - UI 작성 시 Swing 컴포넌트 (`JBPanel`, `JBList`, `Tree`, `ToolWindow` 등) 사용
-- 플랫폼 베이스라인 IDEA Community로 맞춰 AS 호환성 확보 — 필요 시 `intellijIdeaCommunity(...)` 또는 명시적 베이스 IDE 변경
+- 플랫폼 베이스라인은 공통 Platform API로 맞춰 AS 호환성 확보
+- IntelliJ IDEA 최신 안정 버전 검증은 2026.1.1 / 261 브랜치부터 `intellijIdea(...)`와 `IntelliJPlatformType.IntellijIdea`를 사용
+- 매니페스트의 `until-build`는 제거해 261 이후 IDE 업데이트에서도 설치가 막히지 않게 함

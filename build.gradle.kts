@@ -17,7 +17,7 @@ dependencies {
     testImplementation(libs.junit)
 
     intellijPlatform {
-        intellijIdea("2025.3.4.1")
+        intellijIdea("2026.1.1")
         compatiblePlugins(providers.gradleProperty("platformPlugins").map { value ->
             value.split(',').map(String::trim).filter(String::isNotEmpty)
         })
@@ -40,9 +40,9 @@ intellijPlatform {
 
         ides {
             select {
-                sinceBuild.set("253")
-                untilBuild.set("253.*")
-                types.set(listOf(IntelliJPlatformType.IntellijIdeaCommunity))
+                sinceBuild.set("261")
+                untilBuild.set("261.*")
+                types.set(listOf(IntelliJPlatformType.IntellijIdea))
                 channels.set(listOf(Channel.RELEASE))
             }
         }
@@ -51,8 +51,8 @@ intellijPlatform {
 
 tasks {
     patchPluginXml {
-        sinceBuild.set("253")
-        untilBuild.set("253.*")
+        sinceBuild.set("261")
+        untilBuild = provider { null }
     }
 
     test {
