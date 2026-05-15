@@ -1,22 +1,61 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease.Channel
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel
 
 plugins {
     id("org.jetbrains.kotlin.jvm")
-    id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.changelog")
     id("org.jetbrains.intellij.platform")
 }
 
-// Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
+kotlin {
+    jvmToolchain(21)
+}
+
 dependencies {
     testImplementation(libs.junit)
 
-    // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
         intellijIdea("2025.3.4.1")
+        compatiblePlugins(providers.gradleProperty("platformPlugins").map { value ->
+            value.split(',').map(String::trim).filter(String::isNotEmpty)
+        })
         testFramework(TestFrameworkType.Platform)
+        pluginVerifier()
+        javaCompiler()
+    }
+}
 
-        // Add plugin dependencies for compilation here:
-        composeUI()
+intellijPlatform {
+    pluginVerification {
+        failureLevel.set(
+            listOf(
+                FailureLevel.COMPATIBILITY_PROBLEMS,
+                FailureLevel.INTERNAL_API_USAGES,
+                FailureLevel.OVERRIDE_ONLY_API_USAGES,
+                FailureLevel.MISSING_DEPENDENCIES,
+            )
+        )
+
+        ides {
+            select {
+                sinceBuild.set("253")
+                untilBuild.set("253.*")
+                types.set(listOf(IntelliJPlatformType.IntellijIdeaCommunity))
+                channels.set(listOf(Channel.RELEASE))
+            }
+        }
+    }
+}
+
+tasks {
+    patchPluginXml {
+        sinceBuild.set("253")
+        untilBuild.set("253.*")
+    }
+
+    test {
+        useJUnit()
     }
 }
