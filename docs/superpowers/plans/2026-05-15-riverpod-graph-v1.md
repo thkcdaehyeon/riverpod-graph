@@ -1,10 +1,10 @@
 # Riverpod Graph v1 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Agent workers:** REQUIRED SUB-SKILL: use superpowers:subagent-driven-development (recommended) / superpowers:executing-plans. Implement task-by-task. Track checkboxes (`- [ ]`).
 
-**Goal:** Build the v1 IntelliJ/Android Studio plugin that redirects Riverpod generator navigation to source declarations and shows provider/widget dependency views.
+**Goal:** Build v1 IntelliJ/Android Studio plugin that redirects Riverpod generator navigation to source declarations + shows provider/widget dependency views.
 
-**Architecture:** Keep the plugin source-based and opinionated: parse `@riverpod` source files into a small index, resolve generated symbols from that index, and layer navigation/search/actions/UI on the shared model. Use IntelliJ Platform extension points and Swing only; do not synthesize Dart PSI or write generated files.
+**Architecture:** Keep plugin source-based + opinionated: parse `@riverpod` source files into small index, resolve generated symbols from that index, + layer navigation/search/actions/UI on shared model. Use IntelliJ Platform EPs + Swing only; no Dart PSI synthesis, no generated files.
 
 **Tech Stack:** Kotlin JVM, IntelliJ Platform Gradle Plugin 2.x, IntelliJ Platform OpenAPI, Dart plugin dependency, Swing UI, JUnit 4 platform tests.
 
@@ -12,52 +12,29 @@
 
 ## Scope Check
 
-This is a single v1 plan because the features share the same Riverpod declaration index, usage scanner, and dependency model. The plan intentionally excludes Dart Analysis Server overlays, ProviderScope override detection, cross-package widget traversal, settings UI, flat provider view, and usage counts, matching `CONTEXT.md` and ADR decisions.
+Single v1 plan: features share Riverpod declaration index, usage scanner, dependency model. Exclude Dart Analysis Server overlays, ProviderScope override detection, cross-package widget traversal, settings UI, flat provider view, + usage counts, matching `CONTEXT.md` + ADR decisions.
 
 ## File Structure
 
-- Modify `settings.gradle.kts`: remove Compose plugin registration.
-- Modify `build.gradle.kts`: target IntelliJ Community baseline, remove Compose UI, add platform plugin dependencies and test tooling.
-- Modify `gradle.properties`: add platform metadata and marketplace publishing inputs.
-- Modify `src/main/resources/META-INF/plugin.xml`: declare `Dart`, register platform EPs, actions, and Swing tool window.
-- Create `LICENSE`: Apache 2.0 license.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/model/RiverpodModels.kt`: shared immutable model types.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/model/RiverpodNaming.kt`: riverpod_generator 3.x symbol naming.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/parser/RiverpodAnnotationParser.kt`: text parser for source `@riverpod` declarations.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/activation/PubspecDependencyParser.kt`: `pubspec.yaml` dependency detector.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/activation/RiverpodActivationService.kt`: module-level activation.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/index/RiverpodProviderIndex.kt`: FileBasedIndex extension keyed by generated symbols.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/resolution/RiverpodProviderResolver.kt`: resolve generated names back to source PSI.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/navigation/RiverpodGotoDeclarationHandler.kt`: Go to Declaration redirect.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScanner.kt`: scan direct provider usages.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReference.kt`: custom provider PSI reference.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReferencesSearchExecutor.kt`: Find Usages integration.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderDependencyAnalyzer.kt`: provider-to-provider graph.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/analysis/RefExtensionScanner.kt`: Ref extension dependency map.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/analysis/WidgetDependencyAnalyzer.kt`: static widget traversal and markers.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/ui/RiverpodToolWindowFactory.kt`: tool window registration and tabs.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/ui/ProvidersPanel.kt`: Providers tab tree.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/ui/DependencyGraphPanel.kt`: Dependencies tab tree.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/ui/WidgetDependencyDialog.kt`: widget dependency result dialog.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowProviderDependencyGraphAction.kt`: provider context action.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowWidgetDependenciesAction.kt`: widget context action.
-- Create `src/main/kotlin/com/ki960213/riverpodgraph/gutter/RiverpodProviderLineMarkerProvider.kt`: gutter icon for `@riverpod`.
-- Create tests under `src/test/kotlin/com/ki960213/riverpodgraph/...`.
-- Create test fixtures under `src/test/testData/riverpod/...`.
-- Modify `README.md` and `CHANGELOG.md`: v1 behavior, static-analysis limits, license, publishing notes.
+- Build/meta: `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `src/main/resources/META-INF/plugin.xml`, `LICENSE`.
+- Core: `RiverpodModels.kt`, `RiverpodNaming.kt`, `RiverpodAnnotationParser.kt`, `PubspecDependencyParser.kt`, `RiverpodActivationService.kt`.
+- Index/nav/search: `RiverpodProviderIndex.kt`, `RiverpodProviderIndexValue.kt`, `RiverpodProviderResolver.kt`, `RiverpodGotoDeclarationHandler.kt`, `ProviderUsageScanner.kt`, `RiverpodReference.kt`, `RiverpodReferencesSearchExecutor.kt`.
+- Graph/UI/actions: `ProviderDependencyAnalyzer.kt`, `RefExtensionScanner.kt`, `WidgetDependencyAnalyzer.kt`, `RiverpodToolWindowFactory.kt`, `ProvidersPanel.kt`, `DependencyGraphPanel.kt`, `WidgetDependencyDialog.kt`, `ShowProviderDependencyGraphAction.kt`, `ShowWidgetDependenciesAction.kt`, `RiverpodProviderLineMarkerProvider.kt`.
+- Tests/fixtures: `src/test/kotlin/com/ki960213/riverpodgraph/...`, `src/test/testData/riverpod/...`.
+- Docs: `README.md`, `CHANGELOG.md`.
 
 ## Task 1: Build Baseline And Plugin Manifest
 
 **Files:**
-- Modify: `settings.gradle.kts`
-- Modify: `build.gradle.kts`
-- Modify: `gradle.properties`
-- Modify: `src/main/resources/META-INF/plugin.xml`
-- Create: `LICENSE`
+- Mod: `settings.gradle.kts`
+- Mod: `build.gradle.kts`
+- Mod: `gradle.properties`
+- Mod: `src/main/resources/META-INF/plugin.xml`
+- Add: `LICENSE`
 
-- [ ] **Step 1: Write the manifest registration smoke test**
+- [ ] **1: Write manifest registration smoke test**
 
-Create `src/test/kotlin/com/ki960213/riverpodgraph/PluginManifestTest.kt`:
+Add `src/test/kotlin/com/ki960213/riverpodgraph/PluginManifestTest.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph
@@ -81,13 +58,13 @@ class PluginManifestTest {
 }
 ```
 
-- [ ] **Step 2: Run the smoke test to verify it fails**
+- [ ] **2: Run smoke test; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.PluginManifestTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.PluginManifestTest`
 
-Expected: FAIL because `plugin.xml` still contains `com.intellij.modules.compose`, `YourCompany`, and no Riverpod extension registrations.
+Expect: FAIL: `plugin.xml` still contains `com.intellij.modules.compose`, `YourCompany`, + no Riverpod EP registrations.
 
-- [ ] **Step 3: Update Gradle and plugin metadata**
+- [ ] **3: Update Gradle + plugin metadata**
 
 Replace `settings.gradle.kts` with:
 
@@ -213,15 +190,15 @@ Replace `src/main/resources/META-INF/plugin.xml` with:
 </idea-plugin>
 ```
 
-Create `LICENSE` from the full Apache License 2.0 text, with copyright owner:
+Add `LICENSE` from full Apache License 2.0 text, with copyright owner:
 
 ```text
 Copyright 2026 ki960213
 ```
 
-- [ ] **Step 4: Create temporary no-op extension classes so the plugin descriptor resolves**
+- [ ] **4: Create temporary no-op extension classes so plugin descriptor resolves**
 
-Create these files with minimal classes; later tasks replace their internals:
+Create temp no-op classes; later tasks replace internals:
 
 ```kotlin
 // src/main/kotlin/com/ki960213/riverpodgraph/navigation/RiverpodGotoDeclarationHandler.kt
@@ -327,13 +304,13 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
 }
 ```
 
-- [ ] **Step 5: Run tests and plugin verification**
+- [ ] **5: Run tests + plugin verify**
 
-Run: `./gradlew test verifyPlugin`
+Run `./gradlew test verifyPlugin`
 
-Expected: PASS for `PluginManifestTest`; `verifyPlugin` completes without Compose dependency errors.
+Expect: PASS: `PluginManifestTest`; `verifyPlugin` completes no Compose dependency errors.
 
-- [ ] **Step 6: Commit**
+- [ ] **6: Commit**
 
 ```bash
 git add settings.gradle.kts build.gradle.kts gradle.properties src/main/resources/META-INF/plugin.xml LICENSE src/main/kotlin src/test/kotlin/com/ki960213/riverpodgraph/PluginManifestTest.kt
@@ -343,11 +320,11 @@ git commit -m "chore: configure plugin baseline"
 ## Task 2: Core Riverpod Model And Naming
 
 **Files:**
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/model/RiverpodModels.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/model/RiverpodNaming.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/model/RiverpodModels.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/model/RiverpodNaming.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/model/RiverpodNamingTest.kt`
 
-- [ ] **Step 1: Write the failing naming tests**
+- [ ] **1: Write failing naming tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.model
@@ -376,15 +353,15 @@ class RiverpodNamingTest {
 }
 ```
 
-- [ ] **Step 2: Run the naming tests to verify they fail**
+- [ ] **2: Run naming tests; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.model.RiverpodNamingTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.model.RiverpodNamingTest`
 
-Expected: FAIL with unresolved `RiverpodNaming`.
+Expect: FAIL: unresolved `RiverpodNaming`.
 
-- [ ] **Step 3: Implement model and naming**
+- [ ] **3: Implement model + naming**
 
-Create `RiverpodModels.kt`:
+Add `RiverpodModels.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.model
@@ -447,7 +424,7 @@ data class RiverpodDependencyEdge(
 )
 ```
 
-Create `RiverpodNaming.kt`:
+Add `RiverpodNaming.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.model
@@ -473,13 +450,13 @@ object RiverpodNaming {
 }
 ```
 
-- [ ] **Step 4: Run the naming tests**
+- [ ] **4: Run naming tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.model.RiverpodNamingTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.model.RiverpodNamingTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/model src/test/kotlin/com/ki960213/riverpodgraph/model/RiverpodNamingTest.kt
@@ -489,10 +466,10 @@ git commit -m "feat: add riverpod provider model"
 ## Task 3: Parse Source Riverpod Declarations
 
 **Files:**
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/parser/RiverpodAnnotationParser.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/parser/RiverpodAnnotationParser.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/parser/RiverpodAnnotationParserTest.kt`
 
-- [ ] **Step 1: Write failing parser tests**
+- [ ] **1: Write failing parser tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.parser
@@ -550,13 +527,13 @@ class RiverpodAnnotationParserTest {
 }
 ```
 
-- [ ] **Step 2: Run parser tests to verify they fail**
+- [ ] **2: Run parser tests; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.parser.RiverpodAnnotationParserTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.parser.RiverpodAnnotationParserTest`
 
-Expected: FAIL with unresolved `RiverpodAnnotationParser`.
+Expect: FAIL: unresolved `RiverpodAnnotationParser`.
 
-- [ ] **Step 3: Implement the parser**
+- [ ] **3: Implement parser**
 
 ```kotlin
 package com.ki960213.riverpodgraph.parser
@@ -662,13 +639,13 @@ object RiverpodAnnotationParser {
 }
 ```
 
-- [ ] **Step 4: Run parser tests**
+- [ ] **4: Run parser tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.parser.RiverpodAnnotationParserTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.parser.RiverpodAnnotationParserTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/parser src/test/kotlin/com/ki960213/riverpodgraph/parser
@@ -678,11 +655,11 @@ git commit -m "feat: parse riverpod declarations"
 ## Task 4: Module Activation From pubspec.yaml
 
 **Files:**
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/activation/PubspecDependencyParser.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/activation/RiverpodActivationService.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/activation/PubspecDependencyParser.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/activation/RiverpodActivationService.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/activation/PubspecDependencyParserTest.kt`
 
-- [ ] **Step 1: Write failing activation parser tests**
+- [ ] **1: Write failing activation parser tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.activation
@@ -718,15 +695,15 @@ class PubspecDependencyParserTest {
 }
 ```
 
-- [ ] **Step 2: Run activation parser tests to verify they fail**
+- [ ] **2: Run activation parser tests; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.activation.PubspecDependencyParserTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.activation.PubspecDependencyParserTest`
 
-Expected: FAIL with unresolved `PubspecDependencyParser`.
+Expect: FAIL: unresolved `PubspecDependencyParser`.
 
-- [ ] **Step 3: Implement pubspec parser and activation service**
+- [ ] **3: Implement pubspec parser + activation service**
 
-Create `PubspecDependencyParser.kt`:
+Add `PubspecDependencyParser.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.activation
@@ -761,7 +738,7 @@ object PubspecDependencyParser {
 }
 ```
 
-Create `RiverpodActivationService.kt`:
+Add `RiverpodActivationService.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.activation
@@ -793,13 +770,13 @@ class RiverpodActivationService(private val project: Project) {
 }
 ```
 
-- [ ] **Step 4: Run activation tests**
+- [ ] **4: Run activation tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.activation.PubspecDependencyParserTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.activation.PubspecDependencyParserTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/activation src/test/kotlin/com/ki960213/riverpodgraph/activation
@@ -809,12 +786,12 @@ git commit -m "feat: activate for riverpod annotation modules"
 ## Task 5: Provider Index And Resolver
 
 **Files:**
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/index/RiverpodProviderIndex.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/index/RiverpodProviderIndexValue.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/resolution/RiverpodProviderResolver.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/index/RiverpodProviderIndex.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/index/RiverpodProviderIndexValue.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/resolution/RiverpodProviderResolver.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/index/RiverpodProviderIndexValueTest.kt`
 
-- [ ] **Step 1: Write failing serialization tests**
+- [ ] **1: Write failing serialization tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.index
@@ -853,15 +830,15 @@ class RiverpodProviderIndexValueTest {
 }
 ```
 
-- [ ] **Step 2: Run serialization tests to verify they fail**
+- [ ] **2: Run serialization tests; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.index.RiverpodProviderIndexValueTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.index.RiverpodProviderIndexValueTest`
 
-Expected: FAIL with unresolved `RiverpodProviderIndexValue`.
+Expect: FAIL: unresolved `RiverpodProviderIndexValue`.
 
-- [ ] **Step 3: Implement index value, indexer, and resolver**
+- [ ] **3: Implement index value, indexer, + resolver**
 
-Create `RiverpodProviderIndexValue.kt`:
+Add `RiverpodProviderIndexValue.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.index
@@ -1002,7 +979,7 @@ class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIn
 }
 ```
 
-Create `RiverpodProviderResolver.kt`:
+Add `RiverpodProviderResolver.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.resolution
@@ -1030,13 +1007,13 @@ class RiverpodProviderResolver(private val project: Project) {
 }
 ```
 
-- [ ] **Step 4: Run index tests**
+- [ ] **4: Run index tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.index.RiverpodProviderIndexValueTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.index.RiverpodProviderIndexValueTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/index src/main/kotlin/com/ki960213/riverpodgraph/resolution src/test/kotlin/com/ki960213/riverpodgraph/index
@@ -1046,10 +1023,10 @@ git commit -m "feat: index riverpod declarations"
 ## Task 6: Go To Declaration Redirect
 
 **Files:**
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/navigation/RiverpodGotoDeclarationHandler.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/navigation/RiverpodGotoDeclarationHandler.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/navigation/RiverpodGotoDeclarationHandlerTest.kt`
 
-- [ ] **Step 1: Write failing navigation tests**
+- [ ] **1: Write failing navigation tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.navigation
@@ -1081,13 +1058,13 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
 }
 ```
 
-- [ ] **Step 2: Run navigation test to verify it fails**
+- [ ] **2: Run navigation test; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.navigation.RiverpodGotoDeclarationHandlerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.navigation.RiverpodGotoDeclarationHandlerTest`
 
-Expected: FAIL because the handler returns `null`.
+Expect: FAIL: handler returns `null`.
 
-- [ ] **Step 3: Implement navigation redirect**
+- [ ] **3: Implement navigation redirect**
 
 ```kotlin
 package com.ki960213.riverpodgraph.navigation
@@ -1120,13 +1097,13 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
 }
 ```
 
-- [ ] **Step 4: Run navigation test**
+- [ ] **4: Run navigation test**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.navigation.RiverpodGotoDeclarationHandlerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.navigation.RiverpodGotoDeclarationHandlerTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/navigation src/test/kotlin/com/ki960213/riverpodgraph/navigation
@@ -1136,12 +1113,12 @@ git commit -m "feat: redirect riverpod navigation"
 ## Task 7: Direct Usage Scanner And Find Usages
 
 **Files:**
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScanner.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReference.kt`
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReferencesSearchExecutor.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScanner.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReference.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReferencesSearchExecutor.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScannerTest.kt`
 
-- [ ] **Step 1: Write failing usage scanner tests**
+- [ ] **1: Write failing usage scanner tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1183,15 +1160,15 @@ class ProviderUsageScannerTest {
 }
 ```
 
-- [ ] **Step 2: Run usage scanner test to verify it fails**
+- [ ] **2: Run usage scanner test; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderUsageScannerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderUsageScannerTest`
 
-Expected: FAIL with unresolved `ProviderUsageScanner`.
+Expect: FAIL: unresolved `ProviderUsageScanner`.
 
-- [ ] **Step 3: Implement direct usage scanning and PSI references**
+- [ ] **3: Implement direct usage scanning + PSI references**
 
-Create `ProviderUsageScanner.kt`:
+Add `ProviderUsageScanner.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1257,7 +1234,7 @@ object ProviderUsageScanner {
 }
 ```
 
-Create `RiverpodReference.kt`:
+Add `RiverpodReference.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.search
@@ -1276,7 +1253,7 @@ class RiverpodReference(
 }
 ```
 
-Replace `RiverpodReferencesSearchExecutor.kt` with an implementation that:
+Replace `RiverpodReferencesSearchExecutor.kt` with impl that:
 
 ```kotlin
 package com.ki960213.riverpodgraph.search
@@ -1318,13 +1295,13 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
 }
 ```
 
-- [ ] **Step 4: Run usage scanner tests**
+- [ ] **4: Run usage scanner tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderUsageScannerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderUsageScannerTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScanner.kt src/main/kotlin/com/ki960213/riverpodgraph/search src/test/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScannerTest.kt
@@ -1334,11 +1311,11 @@ git commit -m "feat: find riverpod provider usages"
 ## Task 8: Provider Dependency Graph
 
 **Files:**
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderDependencyAnalyzer.kt`
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowProviderDependencyGraphAction.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderDependencyAnalyzer.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowProviderDependencyGraphAction.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/analysis/ProviderDependencyAnalyzerTest.kt`
 
-- [ ] **Step 1: Write failing dependency graph tests**
+- [ ] **1: Write failing dependency graph tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1387,15 +1364,15 @@ class ProviderDependencyAnalyzerTest {
 }
 ```
 
-- [ ] **Step 2: Run dependency graph tests to verify they fail**
+- [ ] **2: Run dependency graph tests; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzerTest`
 
-Expected: FAIL with unresolved `ProviderDependencyAnalyzer`.
+Expect: FAIL: unresolved `ProviderDependencyAnalyzer`.
 
-- [ ] **Step 3: Implement graph analysis and provider graph action**
+- [ ] **3: Implement graph analysis + provider graph action**
 
-Create `ProviderDependencyAnalyzer.kt`:
+Add `ProviderDependencyAnalyzer.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1475,13 +1452,13 @@ class ShowProviderDependencyGraphAction : AnAction() {
 }
 ```
 
-- [ ] **Step 4: Run dependency graph tests**
+- [ ] **4: Run dependency graph tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzerTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderDependencyAnalyzer.kt src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowProviderDependencyGraphAction.kt src/test/kotlin/com/ki960213/riverpodgraph/analysis/ProviderDependencyAnalyzerTest.kt
@@ -1491,12 +1468,12 @@ git commit -m "feat: analyze provider dependencies"
 ## Task 9: Ref Extension Indirect Dependencies
 
 **Files:**
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/RefExtensionScanner.kt`
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScanner.kt`
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReferencesSearchExecutor.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/RefExtensionScanner.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/ProviderUsageScanner.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/search/RiverpodReferencesSearchExecutor.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/analysis/RefExtensionScannerTest.kt`
 
-- [ ] **Step 1: Write failing Ref extension tests**
+- [ ] **1: Write failing Ref extension tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1525,15 +1502,15 @@ class RefExtensionScannerTest {
 }
 ```
 
-- [ ] **Step 2: Run Ref extension tests to verify they fail**
+- [ ] **2: Run Ref extension tests; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.RefExtensionScannerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.RefExtensionScannerTest`
 
-Expected: FAIL with unresolved `RefExtensionScanner`.
+Expect: FAIL: unresolved `RefExtensionScanner`.
 
-- [ ] **Step 3: Implement Ref extension scanner and indirect usage merge**
+- [ ] **3: Implement Ref extension scanner + indirect usage merge**
 
-Create `RefExtensionScanner.kt`:
+Add `RefExtensionScanner.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1595,17 +1572,17 @@ object RefExtensionScanner {
 }
 ```
 
-Update `ProviderUsageScanner.scan` to accept an optional `extensionDependencies: List<RefExtensionDependency> = emptyList()` parameter and append `RiverpodUsageKind.EXTENSION_MEMBER` usages when the source contains `.memberName` or `ref.memberName`.
+Update `ProviderUsageScanner.scan` to accept optional `extensionDependencies: List<RefExtensionDependency> = emptyList()`; append `RiverpodUsageKind.EXTENSION_MEMBER` usages when source contains `.memberName` / `ref.memberName`.
 
-Update `RiverpodReferencesSearchExecutor` to include extension-member references in the same consumer flow, using `RiverpodReference` with the provider from the extension dependency.
+Update `RiverpodReferencesSearchExecutor` to include extension-member references in same consumer flow, use `RiverpodReference` with provider from extension dependency.
 
-- [ ] **Step 4: Run Ref extension and usage tests**
+- [ ] **4: Run Ref extension + usage tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.RefExtensionScannerTest --tests com.ki960213.riverpodgraph.analysis.ProviderUsageScannerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.RefExtensionScannerTest --tests com.ki960213.riverpodgraph.analysis.ProviderUsageScannerTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/analysis src/main/kotlin/com/ki960213/riverpodgraph/search src/test/kotlin/com/ki960213/riverpodgraph/analysis
@@ -1615,12 +1592,12 @@ git commit -m "feat: include ref extension dependencies"
 ## Task 10: Providers Tool Window
 
 **Files:**
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/ui/RiverpodToolWindowFactory.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/ui/ProvidersPanel.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/ui/DependencyGraphPanel.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/ui/RiverpodToolWindowFactory.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/ui/ProvidersPanel.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/ui/DependencyGraphPanel.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/ui/ProvidersPanelTest.kt`
 
-- [ ] **Step 1: Write failing tree label tests**
+- [ ] **1: Write failing tree label tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.ui
@@ -1654,15 +1631,15 @@ class ProvidersPanelTest {
 }
 ```
 
-- [ ] **Step 2: Run UI label test to verify it fails**
+- [ ] **2: Run UI label test; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.ui.ProvidersPanelTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.ui.ProvidersPanelTest`
 
-Expected: FAIL with unresolved `ProvidersPanel`.
+Expect: FAIL: unresolved `ProvidersPanel`.
 
-- [ ] **Step 3: Implement Swing tabs and provider row formatting**
+- [ ] **3: Implement Swing tabs + provider row formatting**
 
-Create `ProvidersPanel.kt`:
+Add `ProvidersPanel.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.ui
@@ -1706,7 +1683,7 @@ class ProvidersPanel : JPanel(BorderLayout()) {
 }
 ```
 
-Create `DependencyGraphPanel.kt`:
+Add `DependencyGraphPanel.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.ui
@@ -1775,13 +1752,13 @@ class RiverpodToolWindowFactory : ToolWindowFactory {
 }
 ```
 
-- [ ] **Step 4: Run UI tests**
+- [ ] **4: Run UI tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.ui.ProvidersPanelTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.ui.ProvidersPanelTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/ui src/test/kotlin/com/ki960213/riverpodgraph/ui
@@ -1791,12 +1768,12 @@ git commit -m "feat: add riverpod graph tool window"
 ## Task 11: Static Widget Dependency Tree
 
 **Files:**
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/WidgetDependencyAnalyzer.kt`
-- Create: `src/main/kotlin/com/ki960213/riverpodgraph/ui/WidgetDependencyDialog.kt`
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowWidgetDependenciesAction.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/analysis/WidgetDependencyAnalyzer.kt`
+- Add: `src/main/kotlin/com/ki960213/riverpodgraph/ui/WidgetDependencyDialog.kt`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowWidgetDependenciesAction.kt`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/analysis/WidgetDependencyAnalyzerTest.kt`
 
-- [ ] **Step 1: Write failing widget analyzer tests**
+- [ ] **1: Write failing widget analyzer tests**
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1834,15 +1811,15 @@ class WidgetDependencyAnalyzerTest {
 }
 ```
 
-- [ ] **Step 2: Run widget analyzer tests to verify they fail**
+- [ ] **2: Run widget analyzer tests; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzerTest`
 
-Expected: FAIL with unresolved `WidgetDependencyAnalyzer`.
+Expect: FAIL: unresolved `WidgetDependencyAnalyzer`.
 
-- [ ] **Step 3: Implement static widget analysis and action**
+- [ ] **3: Implement static widget analysis + action**
 
-Create `WidgetDependencyAnalyzer.kt`:
+Add `WidgetDependencyAnalyzer.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.analysis
@@ -1896,7 +1873,7 @@ object WidgetDependencyAnalyzer {
 }
 ```
 
-Create `WidgetDependencyDialog.kt`:
+Add `WidgetDependencyDialog.kt`:
 
 ```kotlin
 package com.ki960213.riverpodgraph.ui
@@ -1957,13 +1934,13 @@ class ShowWidgetDependenciesAction : AnAction() {
 }
 ```
 
-- [ ] **Step 4: Run widget analyzer tests**
+- [ ] **4: Run widget analyzer tests**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzerTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzerTest`
 
-Expected: PASS.
+Expect: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/analysis/WidgetDependencyAnalyzer.kt src/main/kotlin/com/ki960213/riverpodgraph/ui/WidgetDependencyDialog.kt src/main/kotlin/com/ki960213/riverpodgraph/actions/ShowWidgetDependenciesAction.kt src/test/kotlin/com/ki960213/riverpodgraph/analysis/WidgetDependencyAnalyzerTest.kt
@@ -1973,12 +1950,12 @@ git commit -m "feat: show widget provider dependencies"
 ## Task 12: Gutter Icon, Docs, And Release Readiness
 
 **Files:**
-- Modify: `src/main/kotlin/com/ki960213/riverpodgraph/gutter/RiverpodProviderLineMarkerProvider.kt`
-- Modify: `README.md`
-- Modify: `CHANGELOG.md`
+- Mod: `src/main/kotlin/com/ki960213/riverpodgraph/gutter/RiverpodProviderLineMarkerProvider.kt`
+- Mod: `README.md`
+- Mod: `CHANGELOG.md`
 - Test: `src/test/kotlin/com/ki960213/riverpodgraph/gutter/RiverpodProviderLineMarkerProviderTest.kt`
 
-- [ ] **Step 1: Write failing line marker test**
+- [ ] **1: Write failing line marker test**
 
 ```kotlin
 package com.ki960213.riverpodgraph.gutter
@@ -2002,13 +1979,13 @@ class RiverpodProviderLineMarkerProviderTest : BasePlatformTestCase() {
 }
 ```
 
-- [ ] **Step 2: Run gutter test to verify it fails**
+- [ ] **2: Run gutter test; verify fail**
 
-Run: `./gradlew test --tests com.ki960213.riverpodgraph.gutter.RiverpodProviderLineMarkerProviderTest`
+Run `./gradlew test --tests com.ki960213.riverpodgraph.gutter.RiverpodProviderLineMarkerProviderTest`
 
-Expected: FAIL because no marker is created.
+Expect: FAIL: no marker is created.
 
-- [ ] **Step 3: Implement gutter marker and docs**
+- [ ] **3: Implement gutter marker + docs**
 
 Replace `RiverpodProviderLineMarkerProvider.kt` with:
 
@@ -2085,17 +2062,17 @@ Update `CHANGELOG.md`:
 - Gutter marker for `@riverpod` declarations.
 ```
 
-- [ ] **Step 4: Run final verification**
+- [ ] **4: Final verify**
 
-Run: `./gradlew test verifyPlugin`
+Run `./gradlew test verifyPlugin`
 
-Expected: PASS.
+Expect: PASS.
 
-Run: `./gradlew runIde`
+Run `./gradlew runIde`
 
-Expected: IDE launches, the plugin loads, and a Dart project with `riverpod_annotation` shows the Riverpod Graph tool window.
+Expect: IDE launches, plugin loads, Dart project with `riverpod_annotation` shows Riverpod Graph tool window.
 
-- [ ] **Step 5: Commit**
+- [ ] **5: Commit**
 
 ```bash
 git add src/main/kotlin/com/ki960213/riverpodgraph/gutter src/test/kotlin/com/ki960213/riverpodgraph/gutter README.md CHANGELOG.md
@@ -2104,20 +2081,20 @@ git commit -m "feat: prepare riverpod graph v1"
 
 ## Manual Acceptance Checklist
 
-- Open a sample Riverpod generator project where `pubspec.yaml` includes `riverpod_annotation`.
+- Open sample Riverpod generator project where `pubspec.yaml` includes `riverpod_annotation`.
 - Exclude generated `*.g.dart` files from IntelliJ indexing.
-- Invoke Go to Declaration on `ref.watch(userProvider)` and verify it opens `@riverpod user(...)`.
-- Invoke Go to Declaration on `class User extends _$User` and verify it opens the `User` class declaration when the caret is on `_$User`.
-- Invoke Find Usages on `user()` and `userProvider` and verify both include `watch`, `read`, `listen`, `invalidate`, `refresh`, `.notifier`, `.future`, `.select`, overrides, direct source calls, and Ref extension indirect usages.
-- Open the Riverpod Graph tool window and verify Providers are grouped by source file with name, family signature, return type, keepAlive, and path line.
-- Right-click a provider and run Show Riverpod Dependency Graph; verify cycles are marked and traversal stops at the cycle.
-- Right-click a `ConsumerWidget`, `ConsumerStatefulWidget`, `HookConsumerWidget`, `StatefulHookConsumerWidget`, `StatelessWidget`, and `StatefulWidget`; verify direct providers and child widget candidates appear.
-- Confirm conditional, loop, callback, Ref extension, and cycle markers render as text labels.
-- Confirm the plugin is not active in a Dart module without `riverpod_annotation`.
+- Go to Declaration on `ref.watch(userProvider)` + verify it opens `@riverpod user(...)`.
+- Go to Declaration on `class User extends _$User` + verify it opens `User` class declaration when caret is on `_$User`.
+- Find Usages on `user()` + `userProvider` + verify both include `watch`, `read`, `listen`, `invalidate`, `refresh`, `.notifier`, `.future`, `.select`, overrides, direct source calls, + Ref extension indirect usages.
+- Open Riverpod Graph tool window; verify Providers are grouped by source file with name, family signature, return type, keepAlive, + path line.
+- Right-click provider; run Show Riverpod Dependency Graph; verify cycles are marked + traversal stops at cycle.
+- Right-click `ConsumerWidget`, `ConsumerStatefulWidget`, `HookConsumerWidget`, `StatefulHookConsumerWidget`, `StatelessWidget`, + `StatefulWidget`; verify direct providers + child widget candidates appear.
+- Confirm conditional, loop, callback, Ref extension, + cycle markers render as text labels.
+- Confirm plugin inactive in Dart module no `riverpod_annotation`.
 
 ## Self Review
 
-- Spec coverage: navigation redirect maps to Tasks 5-7; Find Usages maps to Tasks 7 and 9; Providers tab maps to Task 10; widget dependency tree maps to Task 11; provider dependency graph maps to Task 8; gutter icon maps to Task 12; Android Studio and Swing constraints map to Task 1; distribution and Apache 2.0 map to Tasks 1 and 12.
-- Red-flag scan: the plan contains concrete file paths, commands, expected results, code snippets, and commit points.
-- Type consistency: shared model names are `RiverpodProviderDeclaration`, `RiverpodProviderUsage`, `RiverpodDependencyEdge`, `RiverpodMarker`, and those names are used consistently across parser, index, search, analysis, and UI tasks.
-- Accepted out-of-scope items: Dart Analysis Server red-line overlays, ProviderScope overrides, cross-package widget traversal, settings panel, usage counts, and flat provider view remain outside v1.
+- Spec coverage: navigation redirect maps to Tasks 5-7; Find Usages maps to Tasks 7 + 9; Providers tab maps to Task 10; widget dependency tree maps to Task 11; provider dependency graph maps to Task 8; gutter icon maps to Task 12; Android Studio + Swing constraints map to Task 1; distribution + Apache 2.0 map to Tasks 1 + 12.
+- Red-flag scan: plan contains concrete file paths, commands, expected results, code snippets, + commit points.
+- Type consistency: shared model names are `RiverpodProviderDeclaration`, `RiverpodProviderUsage`, `RiverpodDependencyEdge`, `RiverpodMarker`, + those names are used consistently across parser, index, search, analysis, + UI tasks.
+- Out of scope accepted: Dart Analysis Server red-line overlays, ProviderScope overrides, cross-package widget traversal, settings panel, usage counts, + flat provider view remain outside v1.
