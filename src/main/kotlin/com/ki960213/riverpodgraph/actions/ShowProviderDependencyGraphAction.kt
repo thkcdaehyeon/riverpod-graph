@@ -24,7 +24,10 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
         toolWindow.show(
             Runnable {
-                DependencyGraphPanel.findIn(toolWindow.component)?.showProvider(declaration.providerName)
+                DependencyGraphPanel.findIn(toolWindow.component)?.let { graphPanel ->
+                    graphPanel.showProvider(declaration.providerName)
+                    DependencyGraphPanel.selectTabContaining(toolWindow.component, graphPanel)
+                }
             },
         )
     }
