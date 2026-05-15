@@ -3,12 +3,22 @@ package com.ki960213.riverpodgraph.actions
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
@@ -32,14 +42,15 @@ class ShowProviderDependencyGraphAction : AnAction() {
         }
 
         val declaration = declarationFromContext(e) ?: return
-        val edges = dependencyEdges(project, file, declaration)
-        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID) ?: return
-
-        toolWindow.show(
-            Runnable {
-                DependencyGraphPanel.findIn(toolWindow.component)?.let { graphPanel ->
-                    graphPanel.showProviderGraph(declaration.providerName, edges)
-                    DependencyGraphPanel.selectTabContaining(toolWindow.component, graphPanel)
+        ProgressManager.getInstance().run(
+            object : Task.Backgroundable(project, "Analyze Riverpod Provider Dependencies", false) {
+                override fun run(indicator: ProgressIndicator) {
+                    val edges = dependencyEdges(project, file, declaration)
+                    ApplicationManager.getApplication().invokeLater {
+                        if (!project.isDisposed) {
+                            showGraph(project, declaration.providerName, edges)
+                        }
+                    }
                 }
             },
         )
@@ -70,18 +81,38 @@ class ShowProviderDependencyGraphAction : AnAction() {
             .firstNotNullOfOrNull { symbol -> withAvailableIndex { resolver.findDeclaration(symbol) } }
     }
 
+    private fun showGraph(
+        project: Project,
+        providerName: String,
+        edges: List<RiverpodDependencyEdge>,
+    ) {
+        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID) ?: return
+
+        toolWindow.show(
+            Runnable {
+                DependencyGraphPanel.findIn(toolWindow.component)?.let { graphPanel ->
+                    graphPanel.showProviderGraph(providerName, edges)
+                    DependencyGraphPanel.selectTabContaining(toolWindow.component, graphPanel)
+                }
+            },
+        )
+    }
+
     private fun dependencyEdges(
         project: Project,
         file: PsiFile,
         declaration: RiverpodProviderDeclaration,
-    ): List<RiverpodDependencyEdge> {
-        return withAvailableIndex {
-            ReadAction.compute<List<RiverpodDependencyEdge>, RuntimeException> {
-                val filePath = file.virtualFile?.path ?: file.name
-                val declarations = providerDeclarationsInReadAction(project).withDeclaration(declaration)
-                providerGraphEdges(filePath, file.text, declarations)
-            }
-        }.orEmpty()
+    ): List<RiverpodDependencyEdge> = ReadAction.compute<List<RiverpodDependencyEdge>, RuntimeException> {
+        if (!file.isValid) {
+            return@compute emptyList()
+        }
+
+        val declarations = withAvailableIndex {
+            providerDeclarationsInReadAction(project)
+        }.orEmpty().withDeclaration(declaration)
+        val sourceFiles = providerSourceFilesInReadAction(project, file, declarations)
+
+        providerGraphEdgesForSourceFiles(sourceFiles, declarations)
     }
 
     private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
@@ -117,6 +148,37 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
         return this + declaration
     }
+
+    private fun providerSourceFilesInReadAction(
+        project: Project,
+        invocationFile: PsiFile,
+        declarations: List<RiverpodProviderDeclaration>,
+    ): List<ProviderGraphSourceFile> {
+        val declarationPaths = declarations.mapTo(linkedSetOf()) { it.filePath }
+        val invocationPath = invocationFile.virtualFile?.path ?: invocationFile.name
+        val scope = GlobalSearchScope.projectScope(project)
+        val indexedFilesByPath = withAvailableIndex {
+            FilenameIndex.getAllFilesByExt(project, "dart", scope).associateBy { it.path }
+        }.orEmpty()
+
+        return declarationPaths.mapNotNull { filePath ->
+            val virtualFile = LocalFileSystem.getInstance().findFileByPath(filePath) ?: indexedFilesByPath[filePath]
+            val content = virtualFile?.let { sourceText(project, it) }
+                ?: invocationFile.text.takeIf { filePath == invocationPath }
+                ?: return@mapNotNull null
+
+            ProviderGraphSourceFile(filePath, content)
+        }
+    }
+
+    private fun sourceText(project: Project, virtualFile: VirtualFile): String? =
+        try {
+            PsiManager.getInstance(project).findFile(virtualFile)?.text ?: VfsUtil.loadText(virtualFile)
+        } catch (exception: ProcessCanceledException) {
+            throw exception
+        } catch (_: Exception) {
+            null
+        }
 
     private fun symbolCandidates(
         file: PsiFile,
@@ -207,20 +269,31 @@ class ShowProviderDependencyGraphAction : AnAction() {
         val IDENTIFIER_REGEX = Regex("""[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*""")
         val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
 
-        internal fun providerGraphEdges(
-            filePath: String,
-            content: String,
-            declarations: List<RiverpodProviderDeclaration>,
-        ): List<RiverpodDependencyEdge> =
-            ProviderDependencyAnalyzer.markCycles(
-                ProviderDependencyAnalyzer.analyzeFile(
-                    filePath = filePath,
-                    content = content,
-                    declarations = declarations,
-                ),
-            )
-
         fun isProviderChainChar(char: Char): Boolean =
             char == '.' || char == '_' || char == '$' || char.isLetterOrDigit() || char.isWhitespace()
     }
+}
+
+internal data class ProviderGraphSourceFile(
+    val filePath: String,
+    val content: String,
+)
+
+internal fun providerGraphEdgesForSourceFiles(
+    sourceFiles: Collection<ProviderGraphSourceFile>,
+    declarations: List<RiverpodProviderDeclaration>,
+): List<RiverpodDependencyEdge> {
+    val sourcesByPath = sourceFiles.distinctBy { it.filePath }.associateBy { it.filePath }
+    val edges = declarations
+        .mapTo(linkedSetOf()) { it.filePath }
+        .flatMap { filePath ->
+            val source = sourcesByPath[filePath] ?: return@flatMap emptyList()
+            ProviderDependencyAnalyzer.analyzeFile(
+                filePath = filePath,
+                content = source.content,
+                declarations = declarations,
+            )
+        }
+
+    return ProviderDependencyAnalyzer.markCycles(edges).distinct()
 }
