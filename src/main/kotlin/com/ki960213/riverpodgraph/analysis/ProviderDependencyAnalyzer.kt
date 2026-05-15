@@ -24,6 +24,11 @@ object ProviderDependencyAnalyzer {
             .filter { it.filePath == filePath }
             .groupBy { it.providerName }
             .mapValues { (_, declarations) -> declarations.map { it.textOffset }.toSet() }
+        val extensionDependencies = RefExtensionScanner.scan(
+            filePath = filePath,
+            content = content,
+            providerNames = providers,
+        )
 
         return declarations
             .filter { it.filePath == filePath && it.textOffset in content.indices }
@@ -36,13 +41,14 @@ object ProviderDependencyAnalyzer {
                     providerNames = providerNames,
                     directCallSourceNamesByProvider = directCallSourceNamesByProvider,
                     declarationOffsetsByProvider = declarationOffsetsByProvider,
+                    extensionDependencies = extensionDependencies,
                 ).filter { it.textOffset in scanRange }
                     .map { usage ->
                         RiverpodDependencyEdge(
                             fromProvider = declaration.providerName,
                             toProvider = usage.providerName,
                             usageKind = usage.kind,
-                            marker = null,
+                            marker = usage.marker,
                         )
                     }
             }

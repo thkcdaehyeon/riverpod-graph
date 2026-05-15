@@ -72,6 +72,41 @@ class ProviderDependencyAnalyzerTest {
     }
 
     @Test
+    fun `analyzes provider dependencies through ref extension members`() {
+        val source = """
+            import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+            extension WatchUserX on WidgetRef {
+              User get currentUser => watch(userProvider).requireValue;
+            }
+
+            @riverpod
+            User user(Ref ref) => User();
+
+            @riverpod
+            Profile profile(Ref ref) {
+              final user = ref.currentUser;
+              return Profile(user);
+            }
+        """.trimIndent()
+        val declarations = RiverpodAnnotationParser.parse("lib/profile.dart", source)
+
+        val edges = ProviderDependencyAnalyzer.analyzeFile("lib/profile.dart", source, declarations)
+
+        assertEquals(
+            listOf(
+                RiverpodDependencyEdge(
+                    fromProvider = "profileProvider",
+                    toProvider = "userProvider",
+                    usageKind = RiverpodUsageKind.EXTENSION_MEMBER,
+                    marker = RiverpodMarker.REF_EXTENSION,
+                ),
+            ),
+            edges.filter { it.fromProvider == "profileProvider" },
+        )
+    }
+
+    @Test
     fun `marks edges that participate in cycles`() {
         val edges = listOf(
             RiverpodDependencyEdge(

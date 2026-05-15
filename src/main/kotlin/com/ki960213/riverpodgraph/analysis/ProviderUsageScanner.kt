@@ -1,6 +1,7 @@
 package com.ki960213.riverpodgraph.analysis
 
 import com.ki960213.riverpodgraph.model.RiverpodProviderUsage
+import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 
 object ProviderUsageScanner {
@@ -12,6 +13,7 @@ object ProviderUsageScanner {
             setOf(it.removeSuffix("Provider"))
         },
         declarationOffsetsByProvider: Map<String, Set<Int>> = emptyMap(),
+        extensionDependencies: List<RefExtensionDependency> = emptyList(),
     ): List<RiverpodProviderUsage> {
         if (providerNames.isEmpty() || content.isEmpty()) {
             return emptyList()
@@ -33,6 +35,13 @@ object ProviderUsageScanner {
                 declarationOffsets = declarationOffsetsByProvider[providerName].orEmpty(),
             )
         }
+        usages += extensionMemberUsages(
+            filePath = filePath,
+            content = content,
+            code = code,
+            providerNames = providerNames,
+            extensionDependencies = extensionDependencies,
+        )
 
         return usages
             .sortedBy { it.textOffset }
@@ -112,6 +121,45 @@ object ProviderUsageScanner {
         }
     }
 
+    private fun extensionMemberUsages(
+        filePath: String,
+        content: String,
+        code: String,
+        providerNames: Set<String>,
+        extensionDependencies: List<RefExtensionDependency>,
+    ): List<RiverpodProviderUsage> {
+        if (extensionDependencies.isEmpty()) {
+            return emptyList()
+        }
+
+        return extensionDependencies.flatMap { dependency ->
+            val matchingProviderNames = dependency.providerNames.filter { it in providerNames }
+            if (matchingProviderNames.isEmpty()) {
+                return@flatMap emptyList()
+            }
+
+            val memberName = dependency.memberId.substringAfterLast('.')
+            if (memberName.isEmpty()) {
+                return@flatMap emptyList()
+            }
+
+            val regex = Regex("""(?<![._${'$'}A-Za-z0-9])ref\s*\.\s*${Regex.escape(memberName)}(?![_${'$'}A-Za-z0-9])""")
+            regex.findAll(code).flatMap { match ->
+                val memberOffset = code.indexOf(memberName, startIndex = match.range.first)
+                matchingProviderNames.map { providerName ->
+                    usage(
+                        providerName = providerName,
+                        kind = RiverpodUsageKind.EXTENSION_MEMBER,
+                        filePath = filePath,
+                        content = content,
+                        offset = memberOffset,
+                        marker = RiverpodMarker.REF_EXTENSION,
+                    )
+                }
+            }.toList()
+        }
+    }
+
     private fun isMemberAccess(code: String, offset: Int): Boolean {
         var index = offset - 1
         while (index >= 0 && code[index].isWhitespace()) {
@@ -182,12 +230,14 @@ object ProviderUsageScanner {
         filePath: String,
         content: String,
         offset: Int,
+        marker: RiverpodMarker? = null,
     ): RiverpodProviderUsage = RiverpodProviderUsage(
         providerName = providerName,
         kind = kind,
         filePath = filePath,
         textOffset = offset,
         line = lineOf(content, offset),
+        marker = marker,
     )
 
     private fun dartCodeMask(content: String): BooleanArray {

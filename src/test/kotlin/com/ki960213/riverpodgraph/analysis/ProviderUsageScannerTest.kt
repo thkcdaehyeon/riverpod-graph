@@ -1,5 +1,6 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -152,5 +153,48 @@ class ProviderUsageScannerTest {
             ),
             usages.map { it.kind },
         )
+    }
+
+    @Test
+    fun `scans ref extension member usages`() {
+        val content = """
+            final user = ref.currentUser;
+            await ref.reload();
+            final wrongUser = profile.currentUser;
+            await profile.reload();
+            final text = 'ref.currentUser';
+            // ref.reload();
+        """.trimIndent()
+        val extensionDependencies = listOf(
+            RefExtensionDependency(
+                memberId = "WatchUserX.currentUser",
+                receiverType = "WidgetRef",
+                providerNames = listOf("userProvider"),
+                filePath = "lib/ref_x.dart",
+                textOffset = 0,
+            ),
+            RefExtensionDependency(
+                memberId = "WatchUserX.reload",
+                receiverType = "WidgetRef",
+                providerNames = listOf("feedProvider"),
+                filePath = "lib/ref_x.dart",
+                textOffset = 0,
+            ),
+        )
+
+        val usages = ProviderUsageScanner.scan(
+            filePath = "lib/widget.dart",
+            content = content,
+            providerNames = setOf("userProvider", "feedProvider"),
+            extensionDependencies = extensionDependencies,
+        )
+
+        assertEquals(listOf("userProvider", "feedProvider"), usages.map { it.providerName })
+        assertEquals(
+            listOf(RiverpodUsageKind.EXTENSION_MEMBER, RiverpodUsageKind.EXTENSION_MEMBER),
+            usages.map { it.kind },
+        )
+        assertEquals(List(usages.size) { RiverpodMarker.REF_EXTENSION }, usages.map { it.marker })
+        assertEquals(listOf(content.indexOf("currentUser"), content.indexOf("reload")), usages.map { it.textOffset })
     }
 }
