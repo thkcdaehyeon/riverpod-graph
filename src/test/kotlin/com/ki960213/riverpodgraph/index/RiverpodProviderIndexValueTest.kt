@@ -1,16 +1,15 @@
 package com.ki960213.riverpodgraph.index
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
-import org.junit.Assert.assertEquals
-import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 
-class RiverpodProviderIndexValueTest {
-    @Test
-    fun `externalizer round trips index value`() {
+class RiverpodProviderIndexValueTest : StringSpec({
+    "externalizer가 인덱스 값을 왕복 직렬화한다" {
         val value = RiverpodProviderIndexValue(
             kind = RiverpodProviderKind.NOTIFIER_CLASS,
             sourceName = "UserController",
@@ -32,6 +31,6 @@ class RiverpodProviderIndexValueTest {
             DataInputStream(ByteArrayInputStream(bytes.toByteArray())),
         )
 
-        assertEquals(value, restored)
+        (restored) shouldBe value
     }
-}
+})

@@ -1,13 +1,12 @@
 package com.ki960213.riverpodgraph.analysis
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
-import org.junit.Assert.assertEquals
-import org.junit.Test
 
-class ProviderUsageScannerTest {
-    @Test
-    fun `scans common ref calls provider modifiers overrides and direct calls`() {
+class ProviderUsageScannerTest : StringSpec({
+    "일반 ref 호출과 수정자, override, 직접 호출을 스캔한다" {
         val content = """
             final a = ref.watch(userProvider);
             final b = ref.read(sessionProvider.notifier);
@@ -30,8 +29,7 @@ class ProviderUsageScannerTest {
             ),
         )
 
-        assertEquals(
-            listOf(
+        (usages.map { it.kind }) shouldBe listOf(
                 RiverpodUsageKind.WATCH,
                 RiverpodUsageKind.NOTIFIER,
                 RiverpodUsageKind.SELECT,
@@ -39,13 +37,10 @@ class ProviderUsageScannerTest {
                 RiverpodUsageKind.FUTURE,
                 RiverpodUsageKind.OVERRIDE,
                 RiverpodUsageKind.DIRECT_CALL,
-            ),
-            usages.map { it.kind },
-        )
-        assertEquals(List(usages.size) { "lib/widget.dart" }, usages.map { it.filePath })
-        assertEquals(listOf(1, 2, 3, 4, 5, 6, 7), usages.map { it.line })
-        assertEquals(
-            listOf(
+            )
+        (usages.map { it.filePath }) shouldBe List(usages.size) { "lib/widget.dart" }
+        (usages.map { it.line }) shouldBe listOf(1, 2, 3, 4, 5, 6, 7)
+        (usages.map { it.textOffset }) shouldBe listOf(
                 content.indexOf("userProvider"),
                 content.indexOf("sessionProvider"),
                 content.indexOf("settingsProvider"),
@@ -53,13 +48,10 @@ class ProviderUsageScannerTest {
                 content.indexOf("feedProvider"),
                 content.indexOf("userProvider.overrideWith"),
                 content.indexOf("user();"),
-            ),
-            usages.map { it.textOffset },
-        )
+            )
     }
 
-    @Test
-    fun `ignores comments strings declarations and member direct calls`() {
+    "주석, 문자열, 선언, 멤버 직접 호출은 무시한다" {
         val content = """
             // ref.watch(userProvider);
             final text = 'ref.read(userProvider)';
@@ -78,12 +70,11 @@ class ProviderUsageScannerTest {
             providerNames = setOf("userProvider"),
         )
 
-        assertEquals(listOf(RiverpodUsageKind.DIRECT_CALL), usages.map { it.kind })
-        assertEquals(listOf(content.lastIndexOf("user();")), usages.map { it.textOffset })
+        (usages.map { it.kind }) shouldBe listOf(RiverpodUsageKind.DIRECT_CALL)
+        (usages.map { it.textOffset }) shouldBe listOf(content.lastIndexOf("user();"))
     }
 
-    @Test
-    fun `uses supplied source names for direct calls`() {
+    "직접 호출에 제공된 소스 이름을 사용한다" {
         val content = """
             final wrong = foo();
             final direct = fooNotifier();
@@ -96,12 +87,11 @@ class ProviderUsageScannerTest {
             directCallSourceNamesByProvider = mapOf("fooNotifierProvider" to setOf("fooNotifier")),
         )
 
-        assertEquals(listOf(RiverpodUsageKind.DIRECT_CALL), usages.map { it.kind })
-        assertEquals(listOf(content.indexOf("fooNotifier();")), usages.map { it.textOffset })
+        (usages.map { it.kind }) shouldBe listOf(RiverpodUsageKind.DIRECT_CALL)
+        (usages.map { it.textOffset }) shouldBe listOf(content.indexOf("fooNotifier();"))
     }
 
-    @Test
-    fun `excludes multiline source declaration offset from direct calls`() {
+    "여러 줄 소스 선언 오프셋은 직접 호출에서 제외한다" {
         val content = """
             @riverpod
             Future<User>
@@ -117,12 +107,11 @@ class ProviderUsageScannerTest {
             declarationOffsetsByProvider = mapOf("userProvider" to setOf(content.indexOf("user(Ref"))),
         )
 
-        assertEquals(listOf(RiverpodUsageKind.DIRECT_CALL), usages.map { it.kind })
-        assertEquals(listOf(content.lastIndexOf("user();")), usages.map { it.textOffset })
+        (usages.map { it.kind }) shouldBe listOf(RiverpodUsageKind.DIRECT_CALL)
+        (usages.map { it.textOffset }) shouldBe listOf(content.lastIndexOf("user();"))
     }
 
-    @Test
-    fun `scans ref calls with type arguments`() {
+    "타입 인자가 있는 ref 호출을 스캔한다" {
         val content = """
             final a = ref.watch<User>(userProvider);
             final b = ref.read<SessionNotifier>(sessionProvider.notifier);
@@ -143,20 +132,16 @@ class ProviderUsageScannerTest {
             ),
         )
 
-        assertEquals(
-            listOf(
+        (usages.map { it.kind }) shouldBe listOf(
                 RiverpodUsageKind.WATCH,
                 RiverpodUsageKind.NOTIFIER,
                 RiverpodUsageKind.SELECT,
                 RiverpodUsageKind.INVALIDATE,
                 RiverpodUsageKind.FUTURE,
-            ),
-            usages.map { it.kind },
-        )
+            )
     }
 
-    @Test
-    fun `scans ref extension member usages`() {
+    "ref 확장 멤버 사용을 스캔한다" {
         val content = """
             final user = ref.currentUser;
             await ref.reload();
@@ -189,12 +174,9 @@ class ProviderUsageScannerTest {
             extensionDependencies = extensionDependencies,
         )
 
-        assertEquals(listOf("userProvider", "feedProvider"), usages.map { it.providerName })
-        assertEquals(
-            listOf(RiverpodUsageKind.EXTENSION_MEMBER, RiverpodUsageKind.EXTENSION_MEMBER),
-            usages.map { it.kind },
-        )
-        assertEquals(List(usages.size) { RiverpodMarker.REF_EXTENSION }, usages.map { it.marker })
-        assertEquals(listOf(content.indexOf("currentUser"), content.indexOf("reload")), usages.map { it.textOffset })
+        (usages.map { it.providerName }) shouldBe listOf("userProvider", "feedProvider")
+        (usages.map { it.kind }) shouldBe listOf(RiverpodUsageKind.EXTENSION_MEMBER, RiverpodUsageKind.EXTENSION_MEMBER)
+        (usages.map { it.marker }) shouldBe List(usages.size) { RiverpodMarker.REF_EXTENSION }
+        (usages.map { it.textOffset }) shouldBe listOf(content.indexOf("currentUser"), content.indexOf("reload"))
     }
-}
+})

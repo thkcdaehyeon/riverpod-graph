@@ -1,5 +1,12 @@
 [versions]
 junit = "4.13.2"
+junitPlatform = "1.13.4"
+junitVintage = "5.13.4"
+kotest = "6.1.11"
 
 [libraries]
 junit = { module = "junit:junit", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatform" }
+junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junitVintage" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotest" }
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5-jvm", version.ref = "kotest" }

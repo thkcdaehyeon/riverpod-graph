@@ -1,12 +1,10 @@
 package com.ki960213.riverpodgraph.model
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
-class RiverpodModelsTest {
-    @Test
-    fun `provider declaration stores model fields`() {
+class RiverpodModelsTest : StringSpec({
+    "프로바이더 선언은 모델 필드를 저장한다" {
         val declaration = RiverpodProviderDeclaration(
             kind = RiverpodProviderKind.FUNCTION,
             sourceName = "user",
@@ -21,14 +19,13 @@ class RiverpodModelsTest {
             line = 1,
         )
 
-        assertEquals(RiverpodProviderKind.FUNCTION, declaration.kind)
-        assertEquals("String", declaration.returnType)
-        assertEquals("", declaration.familySignature)
-        assertNull(declaration.generatedSuperclassName)
+        (declaration.kind) shouldBe RiverpodProviderKind.FUNCTION
+        (declaration.returnType) shouldBe "String"
+        (declaration.familySignature) shouldBe ""
+        (declaration.generatedSuperclassName) shouldBe null
     }
 
-    @Test
-    fun `usage and dependency edge markers default to null`() {
+    "사용과 의존성 간선 마커 기본값은 null이다" {
         val usage = RiverpodProviderUsage(
             providerName = "userProvider",
             kind = RiverpodUsageKind.WATCH,
@@ -42,7 +39,7 @@ class RiverpodModelsTest {
             usageKind = RiverpodUsageKind.WATCH,
         )
 
-        assertNull(usage.marker)
-        assertNull(edge.marker)
+        (usage.marker) shouldBe null
+        (edge.marker) shouldBe null
     }
-}
+})

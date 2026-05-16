@@ -1,15 +1,11 @@
 package com.ki960213.riverpodgraph.parser
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 
-class RiverpodAnnotationParserTest {
-    @Test
-    fun `parses functional provider declaration`() {
+class RiverpodAnnotationParserTest : StringSpec({
+    "함수형 프로바이더 선언을 파싱한다" {
         val content = """
             import 'package:riverpod_annotation/riverpod_annotation.dart';
             part 'user.g.dart';
@@ -20,23 +16,22 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/user.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals(RiverpodProviderKind.FUNCTION, declaration.kind)
-        assertEquals("user", declaration.sourceName)
-        assertEquals("userProvider", declaration.providerName)
-        assertNull(declaration.generatedSuperclassName)
-        assertEquals("Future<User>", declaration.returnType)
-        assertEquals("Ref ref, String id", declaration.familySignature)
-        assertFalse(declaration.keepAlive)
-        assertFalse(declaration.isPrivate)
-        assertEquals("lib/user.dart", declaration.filePath)
-        assertEquals(content.indexOf("user(Ref"), declaration.textOffset)
-        assertEquals(5, declaration.line)
+        (declaration.kind) shouldBe RiverpodProviderKind.FUNCTION
+        (declaration.sourceName) shouldBe "user"
+        (declaration.providerName) shouldBe "userProvider"
+        (declaration.generatedSuperclassName) shouldBe null
+        (declaration.returnType) shouldBe "Future<User>"
+        (declaration.familySignature) shouldBe "Ref ref, String id"
+        (declaration.keepAlive) shouldBe false
+        (declaration.isPrivate) shouldBe false
+        (declaration.filePath) shouldBe "lib/user.dart"
+        (declaration.textOffset) shouldBe content.indexOf("user(Ref")
+        (declaration.line) shouldBe 5
     }
 
-    @Test
-    fun `parses notifier class declaration with keep alive`() {
+    "keepAlive notifier 클래스 선언을 파싱한다" {
         val content = """
             @Riverpod(keepAlive: true)
             class SessionController extends _${'$'}SessionController {
@@ -47,23 +42,22 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/session.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals(RiverpodProviderKind.NOTIFIER_CLASS, declaration.kind)
-        assertEquals("SessionController", declaration.sourceName)
-        assertEquals("sessionControllerProvider", declaration.providerName)
-        assertEquals("_${'$'}SessionController", declaration.generatedSuperclassName)
-        assertEquals("Session", declaration.returnType)
-        assertEquals("String id", declaration.familySignature)
-        assertTrue(declaration.keepAlive)
-        assertFalse(declaration.isPrivate)
-        assertEquals("lib/session.dart", declaration.filePath)
-        assertEquals(content.indexOf("SessionController"), declaration.textOffset)
-        assertEquals(2, declaration.line)
+        (declaration.kind) shouldBe RiverpodProviderKind.NOTIFIER_CLASS
+        (declaration.sourceName) shouldBe "SessionController"
+        (declaration.providerName) shouldBe "sessionControllerProvider"
+        (declaration.generatedSuperclassName) shouldBe "_${'$'}SessionController"
+        (declaration.returnType) shouldBe "Session"
+        (declaration.familySignature) shouldBe "String id"
+        (declaration.keepAlive) shouldBe true
+        (declaration.isPrivate) shouldBe false
+        (declaration.filePath) shouldBe "lib/session.dart"
+        (declaration.textOffset) shouldBe content.indexOf("SessionController")
+        (declaration.line) shouldBe 2
     }
 
-    @Test
-    fun `ignores annotations in comments and strings`() {
+    "주석과 문자열 안의 어노테이션은 무시한다" {
         val content = """
             // @riverpod
             String commented(Ref ref) => 'not a provider';
@@ -81,13 +75,12 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/comments.dart", content)
 
-        assertEquals(1, declarations.size)
-        assertEquals("real", declarations.single().sourceName)
-        assertEquals(content.indexOf("real(Ref"), declarations.single().textOffset)
+        (declarations.size) shouldBe 1
+        (declarations.single().sourceName) shouldBe "real"
+        (declarations.single().textOffset) shouldBe content.indexOf("real(Ref")
     }
 
-    @Test
-    fun `skips metadata between riverpod annotation and function declaration`() {
+    "riverpod 어노테이션과 함수 선언 사이의 메타데이터를 건너뛴다" {
         val content = """
             @Riverpod(keepAlive: true)
             @Deprecated('use newUser(reason: "(kept)")')
@@ -96,18 +89,17 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/user.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals(RiverpodProviderKind.FUNCTION, declaration.kind)
-        assertEquals("user", declaration.sourceName)
-        assertEquals("Future<User>", declaration.returnType)
-        assertEquals("Ref ref, String id", declaration.familySignature)
-        assertTrue(declaration.keepAlive)
-        assertEquals(content.indexOf("user(Ref"), declaration.textOffset)
+        (declaration.kind) shouldBe RiverpodProviderKind.FUNCTION
+        (declaration.sourceName) shouldBe "user"
+        (declaration.returnType) shouldBe "Future<User>"
+        (declaration.familySignature) shouldBe "Ref ref, String id"
+        (declaration.keepAlive) shouldBe true
+        (declaration.textOffset) shouldBe content.indexOf("user(Ref")
     }
 
-    @Test
-    fun `balances signature pairs while ignoring strings and comments`() {
+    "문자열과 주석을 무시하며 시그니처 괄호 쌍을 맞춘다" {
         val content = """
             @riverpod
             String tricky(
@@ -120,17 +112,13 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/tricky.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals("tricky", declaration.sourceName)
-        assertEquals(
-            "Ref ref, String value, { String fallback = 'not ) end', String commentLike = '/* not comment */', }",
-            declaration.familySignature,
-        )
+        (declaration.sourceName) shouldBe "tricky"
+        (declaration.familySignature) shouldBe "Ref ref, String value, { String fallback = 'not ) end', String commentLike = '/* not comment */', }"
     }
 
-    @Test
-    fun `parses function provider with function return type`() {
+    "함수 반환 타입을 가진 함수 프로바이더를 파싱한다" {
         val content = """
             @riverpod
             String Function() formatter(Ref ref, String prefix) => () => prefix;
@@ -138,17 +126,16 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/formatter.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals("formatter", declaration.sourceName)
-        assertEquals("formatterProvider", declaration.providerName)
-        assertEquals("String Function()", declaration.returnType)
-        assertEquals("Ref ref, String prefix", declaration.familySignature)
-        assertEquals(content.indexOf("formatter(Ref"), declaration.textOffset)
+        (declaration.sourceName) shouldBe "formatter"
+        (declaration.providerName) shouldBe "formatterProvider"
+        (declaration.returnType) shouldBe "String Function()"
+        (declaration.familySignature) shouldBe "Ref ref, String prefix"
+        (declaration.textOffset) shouldBe content.indexOf("formatter(Ref")
     }
 
-    @Test
-    fun `parses function provider with record return type`() {
+    "레코드 반환 타입을 가진 함수 프로바이더를 파싱한다" {
         val content = """
             @riverpod
             (String, int) pair(Ref ref) => ('count', 1);
@@ -156,17 +143,16 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/pair.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals("pair", declaration.sourceName)
-        assertEquals("pairProvider", declaration.providerName)
-        assertEquals("(String, int)", declaration.returnType)
-        assertEquals("Ref ref", declaration.familySignature)
-        assertEquals(content.indexOf("pair(Ref"), declaration.textOffset)
+        (declaration.sourceName) shouldBe "pair"
+        (declaration.providerName) shouldBe "pairProvider"
+        (declaration.returnType) shouldBe "(String, int)"
+        (declaration.familySignature) shouldBe "Ref ref"
+        (declaration.textOffset) shouldBe content.indexOf("pair(Ref")
     }
 
-    @Test
-    fun `finds class build method while ignoring comments strings and nested braces`() {
+    "주석, 문자열, 중첩 중괄호를 무시하고 클래스 build 메서드를 찾는다" {
         val content = """
             @Riverpod(keepAlive: true)
             class SessionController extends _${'$'}SessionController {
@@ -186,17 +172,16 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/session.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals(RiverpodProviderKind.NOTIFIER_CLASS, declaration.kind)
-        assertEquals("SessionController", declaration.sourceName)
-        assertEquals("Session", declaration.returnType)
-        assertEquals("String id", declaration.familySignature)
-        assertEquals(content.indexOf("SessionController"), declaration.textOffset)
+        (declaration.kind) shouldBe RiverpodProviderKind.NOTIFIER_CLASS
+        (declaration.sourceName) shouldBe "SessionController"
+        (declaration.returnType) shouldBe "Session"
+        (declaration.familySignature) shouldBe "String id"
+        (declaration.textOffset) shouldBe content.indexOf("SessionController")
     }
 
-    @Test
-    fun `ignores member build calls before class build method`() {
+    "클래스 build 메서드 앞의 멤버 build 호출은 무시한다" {
         val content = """
             @riverpod
             class SessionController extends _${'$'}SessionController {
@@ -209,14 +194,13 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/session.dart", content)
 
-        assertEquals(1, declarations.size)
+        (declarations.size) shouldBe 1
         val declaration = declarations.single()
-        assertEquals("String", declaration.returnType)
-        assertEquals("String id", declaration.familySignature)
+        (declaration.returnType) shouldBe "String"
+        (declaration.familySignature) shouldBe "String id"
     }
 
-    @Test
-    fun `ignores keep alive text inside annotation comment`() {
+    "어노테이션 주석 안의 keepAlive 문구는 무시한다" {
         val content = """
             @Riverpod(/* keepAlive: true */)
             String user(Ref ref) => 'user';
@@ -224,12 +208,11 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/user.dart", content)
 
-        assertEquals(1, declarations.size)
-        assertFalse(declarations.single().keepAlive)
+        (declarations.size) shouldBe 1
+        (declarations.single().keepAlive) shouldBe false
     }
 
-    @Test
-    fun `ignores keep alive text inside annotation string argument`() {
+    "어노테이션 문자열 인자 안의 keepAlive 문구는 무시한다" {
         val content = """
             @Riverpod(name: 'keepAlive: true')
             String user(Ref ref) => 'user';
@@ -237,12 +220,11 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/user.dart", content)
 
-        assertEquals(1, declarations.size)
-        assertFalse(declarations.single().keepAlive)
+        (declarations.size) shouldBe 1
+        (declarations.single().keepAlive) shouldBe false
     }
 
-    @Test
-    fun `ignores fake annotation inside nested block comment`() {
+    "중첩 블록 주석 안의 가짜 어노테이션은 무시한다" {
         val content = """
             /*
             outer
@@ -257,7 +239,7 @@ class RiverpodAnnotationParserTest {
 
         val declarations = RiverpodAnnotationParser.parse("lib/nested.dart", content)
 
-        assertEquals(1, declarations.size)
-        assertEquals("real", declarations.single().sourceName)
+        (declarations.size) shouldBe 1
+        (declarations.single().sourceName) shouldBe "real"
     }
-}
+})

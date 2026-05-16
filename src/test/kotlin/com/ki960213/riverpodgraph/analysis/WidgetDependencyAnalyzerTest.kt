@@ -1,15 +1,14 @@
 package com.ki960213.riverpodgraph.analysis
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.actions.ShowWidgetDependenciesAction
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
-import org.junit.Assert.assertEquals
-import org.junit.Test
 
-class WidgetDependencyAnalyzerTest {
-    @Test
-    fun `finds provider usage and marked child widget candidates`() {
+class WidgetDependencyAnalyzerTest : StringSpec({
+    "프로바이더 사용과 표시된 자식 위젯 후보를 찾는다" {
         val content = """
             class HomeScreen extends ConsumerWidget {
               @override
@@ -30,13 +29,12 @@ class WidgetDependencyAnalyzerTest {
             depthLimit = 5,
         )
 
-        assertEquals(listOf("userProvider"), result.providerNames)
-        assertEquals(listOf("AdminPanel", "UserTile"), result.childWidgets.map { it.name })
-        assertEquals(listOf(RiverpodMarker.CONDITIONAL, RiverpodMarker.CALLBACK), result.childWidgets.map { it.marker })
+        (result.providerNames) shouldBe listOf("userProvider")
+        (result.childWidgets.map { it.name }) shouldBe listOf("AdminPanel", "UserTile")
+        (result.childWidgets.map { it.marker }) shouldBe listOf(RiverpodMarker.CONDITIONAL, RiverpodMarker.CALLBACK)
     }
 
-    @Test
-    fun `uses caret to select enclosing widget class`() {
+    "캐럿으로 감싼 위젯 클래스를 선택한다" {
         val content = """
             class FirstScreen extends ConsumerWidget {
               @override
@@ -63,13 +61,12 @@ class WidgetDependencyAnalyzerTest {
             caretOffset = content.indexOf("SecondPanel"),
         )
 
-        assertEquals("SecondScreen", result.widgetName)
-        assertEquals(listOf("secondProvider"), result.providerNames)
-        assertEquals(listOf("SecondPanel"), result.childWidgets.map { it.name })
+        (result.widgetName) shouldBe "SecondScreen"
+        (result.providerNames) shouldBe listOf("secondProvider")
+        (result.childWidgets.map { it.name }) shouldBe listOf("SecondPanel")
     }
 
-    @Test
-    fun `uses provider metadata for direct calls and ref extension members`() {
+    "직접 호출과 ref 확장 멤버에 프로바이더 메타데이터를 사용한다" {
         val content = """
             extension WatchUserX on WidgetRef {
               User get currentUser => watch(userProvider);
@@ -105,11 +102,10 @@ class WidgetDependencyAnalyzerTest {
             depthLimit = 5,
         )
 
-        assertEquals(listOf("currentUserProvider", "userProvider"), result.providerNames)
+        (result.providerNames) shouldBe listOf("currentUserProvider", "userProvider")
     }
 
-    @Test
-    fun `uses external ref extension dependencies supplied by caller`() {
+    "호출자가 제공한 외부 ref 확장 의존성을 사용한다" {
         val content = """
             class HomeScreen extends ConsumerWidget {
               @override
@@ -138,11 +134,10 @@ class WidgetDependencyAnalyzerTest {
             depthLimit = 5,
         )
 
-        assertEquals(listOf("userProvider"), result.providerNames)
+        (result.providerNames) shouldBe listOf("userProvider")
     }
 
-    @Test
-    fun `does not use depth limit as direct child breadth cap`() {
+    "깊이 제한을 직접 자식 너비 제한으로 쓰지 않는다" {
         val content = """
             class HomeScreen extends ConsumerWidget {
               @override
@@ -167,14 +162,10 @@ class WidgetDependencyAnalyzerTest {
             depthLimit = 5,
         )
 
-        assertEquals(
-            listOf("OnePanel", "TwoPanel", "ThreePanel", "FourPanel", "FivePanel", "SixPanel", "SevenPanel"),
-            result.childWidgets.map { it.name },
-        )
+        (result.childWidgets.map { it.name }) shouldBe listOf("OnePanel", "TwoPanel", "ThreePanel", "FourPanel", "FivePanel", "SixPanel", "SevenPanel")
     }
 
-    @Test
-    fun `does not bleed markers across sibling widgets`() {
+    "형제 위젯 사이로 마커가 번지지 않는다" {
         val content = """
             class HomeScreen extends ConsumerWidget {
               @override
@@ -196,18 +187,11 @@ class WidgetDependencyAnalyzerTest {
             depthLimit = 10,
         )
 
-        assertEquals(
-            listOf("AdminPanel", "PlainPanel", "UserTile", "PlainAfterCallback"),
-            result.childWidgets.map { it.name },
-        )
-        assertEquals(
-            listOf(RiverpodMarker.CONDITIONAL, null, RiverpodMarker.CALLBACK, null),
-            result.childWidgets.map { it.marker },
-        )
+        (result.childWidgets.map { it.name }) shouldBe listOf("AdminPanel", "PlainPanel", "UserTile", "PlainAfterCallback")
+        (result.childWidgets.map { it.marker }) shouldBe listOf(RiverpodMarker.CONDITIONAL, null, RiverpodMarker.CALLBACK, null)
     }
 
-    @Test
-    fun `excludes current widget constructor and obvious non widget constructors`() {
+    "현재 위젯 생성자와 명백한 비위젯 생성자를 제외한다" {
         val content = """
             class HomeScreen extends ConsumerWidget {
               @override
@@ -230,36 +214,36 @@ class WidgetDependencyAnalyzerTest {
             depthLimit = 10,
         )
 
-        assertEquals(listOf("UserTile"), result.childWidgets.map { it.name })
+        (result.childWidgets.map { it.name }) shouldBe listOf("UserTile")
     }
 
-    @Test
-    fun `action fallback provider scan ignores comments and strings`() {
+    "액션 fallback 프로바이더 스캔은 주석과 문자열을 무시한다" {
         val content = """
             // ref.watch(commentedProvider);
             final text = 'stringProvider';
             final user = ref.watch(realProvider);
         """.trimIndent()
 
-        assertEquals(setOf("realProvider"), ShowWidgetDependenciesAction.fallbackProviderNames(content))
+        (ShowWidgetDependenciesAction.fallbackProviderNames(content)) shouldBe setOf("realProvider")
     }
 
-    private fun declaration(
-        sourceName: String,
-        providerName: String,
-        filePath: String,
-        textOffset: Int,
-    ): RiverpodProviderDeclaration = RiverpodProviderDeclaration(
-        kind = RiverpodProviderKind.FUNCTION,
-        sourceName = sourceName,
-        providerName = providerName,
-        generatedSuperclassName = null,
-        returnType = "Object",
-        familySignature = "Ref ref",
-        keepAlive = false,
-        isPrivate = false,
-        filePath = filePath,
-        textOffset = textOffset,
-        line = 1,
-    )
-}
+})
+
+private fun declaration(
+    sourceName: String,
+    providerName: String,
+    filePath: String,
+    textOffset: Int,
+): RiverpodProviderDeclaration = RiverpodProviderDeclaration(
+    kind = RiverpodProviderKind.FUNCTION,
+    sourceName = sourceName,
+    providerName = providerName,
+    generatedSuperclassName = null,
+    returnType = "Object",
+    familySignature = "Ref ref",
+    keepAlive = false,
+    isPrivate = false,
+    filePath = filePath,
+    textOffset = textOffset,
+    line = 1,
+)

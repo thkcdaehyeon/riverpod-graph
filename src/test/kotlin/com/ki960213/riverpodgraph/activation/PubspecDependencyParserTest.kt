@@ -1,12 +1,10 @@
 package com.ki960213.riverpodgraph.activation
 
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
-class PubspecDependencyParserTest {
-    @Test
-    fun `detects riverpod annotation dependency in dependencies block`() {
+class PubspecDependencyParserTest : StringSpec({
+    "dependencies 블록의 riverpod_annotation을 감지한다" {
         val pubspec = """
             dependencies:
               flutter:
@@ -14,72 +12,65 @@ class PubspecDependencyParserTest {
               riverpod_annotation: ^3.0.0
         """.trimIndent()
 
-        assertTrue(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe true
     }
 
-    @Test
-    fun `does not activate for runtime-only riverpod`() {
+    "런타임 riverpod만 있으면 활성화하지 않는다" {
         val pubspec = """
             dependencies:
               flutter_riverpod: ^3.0.0
         """.trimIndent()
 
-        assertFalse(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe false
     }
 
-    @Test
-    fun `detects riverpod annotation dependency in dev dependencies block`() {
+    "dev_dependencies 블록의 riverpod_annotation을 감지한다" {
         val pubspec = """
             dev_dependencies:
               riverpod_annotation: ^3.0.0
         """.trimIndent()
 
-        assertTrue(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe true
     }
 
-    @Test
-    fun `detects riverpod annotation dependency with quoted keys`() {
+    "따옴표 키의 riverpod_annotation 의존성을 감지한다" {
         val pubspec = """
             "dependencies":
               'riverpod_annotation': ^3.0.0
         """.trimIndent()
 
-        assertTrue(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe true
     }
 
-    @Test
-    fun `detects riverpod annotation dev dependency with quoted keys`() {
+    "따옴표 키의 dev riverpod_annotation 의존성을 감지한다" {
         val pubspec = """
             'dev_dependencies':
               "riverpod_annotation": ^3.0.0
         """.trimIndent()
 
-        assertTrue(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe true
     }
 
-    @Test
-    fun `ignores nested dependencies block`() {
+    "중첩된 dependencies 블록은 무시한다" {
         val pubspec = """
             flutter:
               dependencies:
                 riverpod_annotation: ^3.0.0
         """.trimIndent()
 
-        assertFalse(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe false
     }
 
-    @Test
-    fun `detects riverpod annotation dependency in commented dependencies block`() {
+    "주석이 섞인 dependencies 블록에서도 riverpod_annotation을 감지한다" {
         val pubspec = """
             dependencies: # app packages
               riverpod_annotation: ^3.0.0
         """.trimIndent()
 
-        assertTrue(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe true
     }
 
-    @Test
-    fun `ignores nested riverpod annotation key inside another dependency`() {
+    "다른 의존성 내부의 중첩 riverpod_annotation 키는 무시한다" {
         val pubspec = """
             dependencies:
               local_package:
@@ -87,6 +78,6 @@ class PubspecDependencyParserTest {
                 riverpod_annotation: false
         """.trimIndent()
 
-        assertFalse(PubspecDependencyParser.hasRiverpodAnnotation(pubspec))
+        (PubspecDependencyParser.hasRiverpodAnnotation(pubspec)) shouldBe false
     }
-}
+})

@@ -1,13 +1,12 @@
 package com.ki960213.riverpodgraph.ui
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
-import org.junit.Assert.assertEquals
-import org.junit.Test
 
-class RiverpodToolWindowFactoryTest {
-    @Test
-    fun `providerDeclarationsFromIndexValues dedupes by provider path and offset then sorts`() {
+class RiverpodToolWindowFactoryTest : StringSpec({
+    "인덱스 값에서 프로바이더 경로와 오프셋으로 중복 제거 후 정렬한다" {
         val declarations = RiverpodToolWindowFactory.providerDeclarationsFromIndexValues(
             listOf(
                 value(providerName = "zProvider", filePath = "lib/z.dart", textOffset = 4),
@@ -17,28 +16,26 @@ class RiverpodToolWindowFactoryTest {
             ),
         )
 
-        assertEquals(
-            listOf("aProvider:lib/a.dart:2", "aProvider:lib/a.dart:8", "zProvider:lib/z.dart:4"),
-            declarations.map { "${it.providerName}:${it.filePath}:${it.textOffset}" },
-        )
+        (declarations.map { "${it.providerName}:${it.filePath}:${it.textOffset}" }) shouldBe listOf("aProvider:lib/a.dart:2", "aProvider:lib/a.dart:8", "zProvider:lib/z.dart:4")
     }
 
-    private fun value(
-        providerName: String,
-        sourceName: String = providerName.removeSuffix("Provider"),
-        filePath: String,
-        textOffset: Int,
-    ): RiverpodProviderIndexValue = RiverpodProviderIndexValue(
-        kind = RiverpodProviderKind.FUNCTION,
-        sourceName = sourceName,
-        providerName = providerName,
-        generatedSuperclassName = null,
-        returnType = "String",
-        familySignature = "",
-        keepAlive = false,
-        isPrivate = false,
-        filePath = filePath,
-        textOffset = textOffset,
-        line = 1,
-    )
-}
+})
+
+private fun value(
+    providerName: String,
+    sourceName: String = providerName.removeSuffix("Provider"),
+    filePath: String,
+    textOffset: Int,
+): RiverpodProviderIndexValue = RiverpodProviderIndexValue(
+    kind = RiverpodProviderKind.FUNCTION,
+    sourceName = sourceName,
+    providerName = providerName,
+    generatedSuperclassName = null,
+    returnType = "String",
+    familySignature = "",
+    keepAlive = false,
+    isPrivate = false,
+    filePath = filePath,
+    textOffset = textOffset,
+    line = 1,
+)

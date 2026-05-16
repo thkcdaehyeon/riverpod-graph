@@ -1,38 +1,33 @@
 package com.ki960213.riverpodgraph.model
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
-class RiverpodNamingTest {
-    @Test
-    fun `function provider keeps original lower camel name`() {
-        assertEquals("userProvider", RiverpodNaming.providerForFunction("user"))
-        assertEquals("_privateUserProvider", RiverpodNaming.providerForFunction("_privateUser"))
-        assertEquals("userProvider", RiverpodNaming.providerForFunction("User"))
+class RiverpodNamingTest : StringSpec({
+    "함수 프로바이더는 원래 lowerCamel 이름을 유지한다" {
+        (RiverpodNaming.providerForFunction("user")) shouldBe "userProvider"
+        (RiverpodNaming.providerForFunction("_privateUser")) shouldBe "_privateUserProvider"
+        (RiverpodNaming.providerForFunction("User")) shouldBe "userProvider"
     }
 
-    @Test
-    fun `function provider strips default trailing notifier`() {
-        assertEquals("fooProvider", RiverpodNaming.providerForFunction("fooNotifier"))
-        assertEquals("_fooProvider", RiverpodNaming.providerForFunction("_fooNotifier"))
+    "함수 프로바이더는 기본 Notifier 접미사를 제거한다" {
+        (RiverpodNaming.providerForFunction("fooNotifier")) shouldBe "fooProvider"
+        (RiverpodNaming.providerForFunction("_fooNotifier")) shouldBe "_fooProvider"
     }
 
-    @Test
-    fun `class provider uses generator lower first naming`() {
-        assertEquals("userControllerProvider", RiverpodNaming.providerForClass("UserController"))
-        assertEquals("_privateControllerProvider", RiverpodNaming.providerForClass("_PrivateController"))
-        assertEquals("uRLCacheProvider", RiverpodNaming.providerForClass("URLCache"))
+    "클래스 프로바이더는 generator의 첫 글자 소문자 규칙을 사용한다" {
+        (RiverpodNaming.providerForClass("UserController")) shouldBe "userControllerProvider"
+        (RiverpodNaming.providerForClass("_PrivateController")) shouldBe "_privateControllerProvider"
+        (RiverpodNaming.providerForClass("URLCache")) shouldBe "uRLCacheProvider"
     }
 
-    @Test
-    fun `class provider strips default trailing notifier`() {
-        assertEquals("counterProvider", RiverpodNaming.providerForClass("CounterNotifier"))
-        assertEquals("_privateProvider", RiverpodNaming.providerForClass("_PrivateNotifier"))
+    "클래스 프로바이더는 기본 Notifier 접미사를 제거한다" {
+        (RiverpodNaming.providerForClass("CounterNotifier")) shouldBe "counterProvider"
+        (RiverpodNaming.providerForClass("_PrivateNotifier")) shouldBe "_privateProvider"
     }
 
-    @Test
-    fun `generated superclass keeps public class name`() {
-        assertEquals("_${'$'}" + "UserController", RiverpodNaming.generatedSuperclassForClass("UserController"))
-        assertEquals("_${'$'}" + "PrivateController", RiverpodNaming.generatedSuperclassForClass("_PrivateController"))
+    "생성 상위 클래스 이름은 공개 클래스 이름을 유지한다" {
+        (RiverpodNaming.generatedSuperclassForClass("UserController")) shouldBe "_${'$'}" + "UserController"
+        (RiverpodNaming.generatedSuperclassForClass("_PrivateController")) shouldBe "_${'$'}" + "PrivateController"
     }
-}
+})

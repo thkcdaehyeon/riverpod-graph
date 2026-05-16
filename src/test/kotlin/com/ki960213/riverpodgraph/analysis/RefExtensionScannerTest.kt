@@ -1,11 +1,10 @@
 package com.ki960213.riverpodgraph.analysis
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
-class RefExtensionScannerTest {
-    @Test
-    fun `scans ref extension arrow members and maps provider usages`() {
+class RefExtensionScannerTest : StringSpec({
+    "화살표 ref 확장 멤버와 프로바이더 사용을 매핑한다" {
         val content = """
             extension WatchUserX on WidgetRef {
               User get currentUser => watch(userProvider).requireValue;
@@ -19,22 +18,18 @@ class RefExtensionScannerTest {
             providerNames = setOf("userProvider", "feedProvider"),
         )
 
-        assertEquals(listOf("WatchUserX.currentUser", "WatchUserX.reload"), dependencies.map { it.memberId })
-        assertEquals(listOf("WidgetRef", "WidgetRef"), dependencies.map { it.receiverType })
-        assertEquals(listOf(listOf("userProvider"), listOf("feedProvider")), dependencies.map { it.providerNames })
-        assertEquals(listOf("lib/ref_x.dart", "lib/ref_x.dart"), dependencies.map { it.filePath })
-        assertEquals(listOf(content.indexOf("currentUser"), content.indexOf("reload")), dependencies.map { it.textOffset })
-        assertEquals(
-            listOf(
+        (dependencies.map { it.memberId }) shouldBe listOf("WatchUserX.currentUser", "WatchUserX.reload")
+        (dependencies.map { it.receiverType }) shouldBe listOf("WidgetRef", "WidgetRef")
+        (dependencies.map { it.providerNames }) shouldBe listOf(listOf("userProvider"), listOf("feedProvider"))
+        (dependencies.map { it.filePath }) shouldBe listOf("lib/ref_x.dart", "lib/ref_x.dart")
+        (dependencies.map { it.textOffset }) shouldBe listOf(content.indexOf("currentUser"), content.indexOf("reload"))
+        (dependencies.map { it.providerOffsetsByProvider }) shouldBe listOf(
                 mapOf("userProvider" to listOf(content.indexOf("userProvider"))),
                 mapOf("feedProvider" to listOf(content.indexOf("feedProvider"))),
-            ),
-            dependencies.map { it.providerOffsetsByProvider },
-        )
+            )
     }
 
-    @Test
-    fun `scans block-bodied ref extension members and prefixed nullable receiver types`() {
+    "블록 본문 ref 확장 멤버와 접두 nullable receiver를 스캔한다" {
         val content = """
             extension WatchUserX on riverpod.WidgetRef? {
               User get currentUser {
@@ -54,27 +49,20 @@ class RefExtensionScannerTest {
             providerNames = setOf("userProvider", "feedProvider", "cacheProvider"),
         )
 
-        assertEquals(listOf("WatchUserX.currentUser", "WatchUserX.reload"), dependencies.map { it.memberId })
-        assertEquals(listOf("riverpod.WidgetRef?", "riverpod.WidgetRef?"), dependencies.map { it.receiverType })
-        assertEquals(
-            listOf(listOf("userProvider"), listOf("feedProvider", "cacheProvider")),
-            dependencies.map { it.providerNames },
-        )
-        assertEquals(listOf(content.indexOf("currentUser"), content.indexOf("reload")), dependencies.map { it.textOffset })
-        assertEquals(
-            listOf(
+        (dependencies.map { it.memberId }) shouldBe listOf("WatchUserX.currentUser", "WatchUserX.reload")
+        (dependencies.map { it.receiverType }) shouldBe listOf("riverpod.WidgetRef?", "riverpod.WidgetRef?")
+        (dependencies.map { it.providerNames }) shouldBe listOf(listOf("userProvider"), listOf("feedProvider", "cacheProvider"))
+        (dependencies.map { it.textOffset }) shouldBe listOf(content.indexOf("currentUser"), content.indexOf("reload"))
+        (dependencies.map { it.providerOffsetsByProvider }) shouldBe listOf(
                 mapOf("userProvider" to listOf(content.indexOf("userProvider"))),
                 mapOf(
                     "feedProvider" to listOf(content.indexOf("feedProvider")),
                     "cacheProvider" to listOf(content.indexOf("cacheProvider")),
                 ),
-            ),
-            dependencies.map { it.providerOffsetsByProvider },
-        )
+            )
     }
 
-    @Test
-    fun `does not treat other receiver watch calls as ref dependencies`() {
+    "다른 receiver의 watch 호출은 ref 의존성으로 보지 않는다" {
         val content = """
             extension WatchUserX on WidgetRef {
               User get currentUser => watch(userProvider).requireValue;
@@ -89,15 +77,11 @@ class RefExtensionScannerTest {
             providerNames = setOf("userProvider"),
         )
 
-        assertEquals(listOf("WatchUserX.currentUser"), dependencies.map { it.memberId })
-        assertEquals(
-            listOf(mapOf("userProvider" to listOf(content.indexOf("userProvider")))),
-            dependencies.map { it.providerOffsetsByProvider },
-        )
+        (dependencies.map { it.memberId }) shouldBe listOf("WatchUserX.currentUser")
+        (dependencies.map { it.providerOffsetsByProvider }) shouldBe listOf(mapOf("userProvider" to listOf(content.indexOf("userProvider"))))
     }
 
-    @Test
-    fun `scans unnamed ref extensions with receiver-based member ids`() {
+    "이름 없는 ref 확장을 receiver 기반 멤버 ID로 스캔한다" {
         val content = """
             extension on WidgetRef {
               User get currentUser => watch(userProvider).requireValue;
@@ -110,7 +94,7 @@ class RefExtensionScannerTest {
             providerNames = setOf("userProvider"),
         )
 
-        assertEquals(listOf("WidgetRef.currentUser"), dependencies.map { it.memberId })
-        assertEquals(listOf("WidgetRef"), dependencies.map { it.receiverType })
+        (dependencies.map { it.memberId }) shouldBe listOf("WidgetRef.currentUser")
+        (dependencies.map { it.receiverType }) shouldBe listOf("WidgetRef")
     }
-}
+})

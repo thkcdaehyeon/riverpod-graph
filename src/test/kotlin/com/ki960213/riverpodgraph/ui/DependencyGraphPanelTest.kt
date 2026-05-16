@@ -1,17 +1,15 @@
 package com.ki960213.riverpodgraph.ui
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
-import org.junit.Test
 import javax.swing.JTabbedPane
 import javax.swing.JPanel
 
-class DependencyGraphPanelTest {
-    @Test
-    fun `finds panel nested inside container`() {
+class DependencyGraphPanelTest : StringSpec({
+    "컨테이너 안에 중첩된 패널을 찾는다" {
         val root = JPanel()
         val nested = JPanel()
         val panel = DependencyGraphPanel()
@@ -19,21 +17,19 @@ class DependencyGraphPanelTest {
         nested.add(panel)
         root.add(nested)
 
-        assertSame(panel, DependencyGraphPanel.findIn(root))
+        ((DependencyGraphPanel.findIn(root)) === (panel)) shouldBe true
     }
 
-    @Test
-    fun `finds panel nested inside tabbed pane`() {
+    "탭 패널 안에 중첩된 패널을 찾는다" {
         val tabs = JTabbedPane()
         val panel = DependencyGraphPanel()
 
         tabs.addTab("Dependencies", panel)
 
-        assertSame(panel, DependencyGraphPanel.findIn(tabs))
+        ((DependencyGraphPanel.findIn(tabs)) === (panel)) shouldBe true
     }
 
-    @Test
-    fun `selects dependency tab containing graph panel`() {
+    "그래프 패널이 들어있는 의존성 탭을 선택한다" {
         val tabs = JTabbedPane()
         val providersPanel = JPanel()
         val graphPanel = DependencyGraphPanel()
@@ -42,14 +38,13 @@ class DependencyGraphPanelTest {
         tabs.addTab("Dependencies", graphPanel)
         tabs.selectedComponent = providersPanel
 
-        assertSame(tabs, DependencyGraphPanel.findTabbedPaneContaining(tabs, graphPanel))
+        ((DependencyGraphPanel.findTabbedPaneContaining(tabs, graphPanel)) === (tabs)) shouldBe true
         DependencyGraphPanel.selectTabContaining(tabs, graphPanel)
 
-        assertSame(graphPanel, tabs.selectedComponent)
+        ((tabs.selectedComponent) === (graphPanel)) shouldBe true
     }
 
-    @Test
-    fun `renders selected provider outgoing dependency rows with usage and marker labels`() {
+    "선택한 프로바이더의 outgoing 의존성을 사용 종류와 마커 라벨로 렌더링한다" {
         val panel = DependencyGraphPanel()
 
         panel.showProviderGraph(
@@ -75,13 +70,10 @@ class DependencyGraphPanelTest {
             ),
         )
 
-        assertEquals("profileProvider", panel.selectedProvider)
-        assertEquals(
-            listOf(
+        (panel.selectedProvider) shouldBe "profileProvider"
+        (panel.dependencyRows()) shouldBe listOf(
                 "sessionProvider [extension member] [ref extension]",
                 "userProvider [watch] [cycle]",
-            ),
-            panel.dependencyRows(),
-        )
+            )
     }
-}
+})

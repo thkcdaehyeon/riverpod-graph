@@ -1,17 +1,16 @@
 package com.ki960213.riverpodgraph.analysis
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
-import org.junit.Assert.assertEquals
-import org.junit.Test
 
-class ProviderDependencyAnalyzerTest {
-    @Test
-    fun `analyzes provider dependencies from ref usages`() {
+class ProviderDependencyAnalyzerTest : StringSpec({
+    "ref 사용에서 프로바이더 의존성을 분석한다" {
         val source = """
             import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -32,14 +31,10 @@ class ProviderDependencyAnalyzerTest {
 
         val edges = ProviderDependencyAnalyzer.analyzeFile("lib/profile.dart", source, declarations)
 
-        assertEquals(
-            listOf("userProvider", "sessionProvider"),
-            edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider },
-        )
+        (edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider }) shouldBe listOf("userProvider", "sessionProvider")
     }
 
-    @Test
-    fun `keeps direct call when declaration offset collision belongs to another file`() {
+    "다른 파일의 선언 오프셋 충돌이면 직접 호출을 유지한다" {
         val source = """
             @riverpod
             Profile profile(Ref ref) {
@@ -65,14 +60,10 @@ class ProviderDependencyAnalyzerTest {
 
         val edges = ProviderDependencyAnalyzer.analyzeFile("lib/profile.dart", source, declarations)
 
-        assertEquals(
-            listOf("userProvider"),
-            edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider },
-        )
+        (edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider }) shouldBe listOf("userProvider")
     }
 
-    @Test
-    fun `analyzes provider dependencies through ref extension members`() {
+    "ref 확장 멤버를 통한 의존성을 분석한다" {
         val source = """
             import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -93,21 +84,17 @@ class ProviderDependencyAnalyzerTest {
 
         val edges = ProviderDependencyAnalyzer.analyzeFile("lib/profile.dart", source, declarations)
 
-        assertEquals(
-            listOf(
+        (edges.filter { it.fromProvider == "profileProvider" }) shouldBe listOf(
                 RiverpodDependencyEdge(
                     fromProvider = "profileProvider",
                     toProvider = "userProvider",
                     usageKind = RiverpodUsageKind.EXTENSION_MEMBER,
                     marker = RiverpodMarker.REF_EXTENSION,
                 ),
-            ),
-            edges.filter { it.fromProvider == "profileProvider" },
-        )
+            )
     }
 
-    @Test
-    fun `marks edges that participate in cycles`() {
+    "순환에 포함된 간선을 표시한다" {
         val edges = listOf(
             RiverpodDependencyEdge(
                 fromProvider = "aProvider",
@@ -128,28 +115,26 @@ class ProviderDependencyAnalyzerTest {
 
         val marked = ProviderDependencyAnalyzer.markCycles(edges)
 
-        assertEquals(
-            listOf(RiverpodMarker.CYCLE, RiverpodMarker.CYCLE, null),
-            marked.map { it.marker },
-        )
+        (marked.map { it.marker }) shouldBe listOf(RiverpodMarker.CYCLE, RiverpodMarker.CYCLE, null)
     }
 
-    private fun declaration(
-        sourceName: String,
-        providerName: String,
-        filePath: String,
-        textOffset: Int,
-    ): RiverpodProviderDeclaration = RiverpodProviderDeclaration(
-        kind = RiverpodProviderKind.FUNCTION,
-        sourceName = sourceName,
-        providerName = providerName,
-        generatedSuperclassName = null,
-        returnType = "Object",
-        familySignature = "Ref ref",
-        keepAlive = false,
-        isPrivate = false,
-        filePath = filePath,
-        textOffset = textOffset,
-        line = 1,
-    )
-}
+})
+
+private fun declaration(
+    sourceName: String,
+    providerName: String,
+    filePath: String,
+    textOffset: Int,
+): RiverpodProviderDeclaration = RiverpodProviderDeclaration(
+    kind = RiverpodProviderKind.FUNCTION,
+    sourceName = sourceName,
+    providerName = providerName,
+    generatedSuperclassName = null,
+    returnType = "Object",
+    familySignature = "Ref ref",
+    keepAlive = false,
+    isPrivate = false,
+    filePath = filePath,
+    textOffset = textOffset,
+    line = 1,
+)

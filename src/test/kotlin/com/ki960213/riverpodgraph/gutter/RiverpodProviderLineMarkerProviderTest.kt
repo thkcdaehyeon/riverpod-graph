@@ -15,18 +15,18 @@ class RiverpodProviderLineMarkerProviderTest : BasePlatformTestCase() {
         addRiverpodPubspec()
     }
 
-    fun testCreatesMarkerForExactRiverpodAnnotations() {
+    fun `test 정확한 Riverpod 어노테이션에 마커를 만든다`() {
         assertNotNull(provider.getLineMarkerInfo(psi("@riverpod")))
         assertNotNull(provider.getLineMarkerInfo(psi("@Riverpod")))
         assertNotNull(provider.getLineMarkerInfo(psi("@Riverpod(keepAlive: true)")))
     }
 
-    fun testDoesNotCreateMarkerForSimilarAnnotationNames() {
+    fun `test 비슷한 어노테이션 이름에는 마커를 만들지 않는다`() {
         assertNull(provider.getLineMarkerInfo(psi("@RiverpodFake")))
         assertNull(provider.getLineMarkerInfo(psi("@riverpodFake")))
     }
 
-    fun testDoesNotCreateMarkerForParentOrFileText() {
+    fun `test 부모나 파일 텍스트만으로는 마커를 만들지 않는다`() {
         assertNull(
             provider.getLineMarkerInfo(
                 psi(
@@ -39,7 +39,7 @@ class RiverpodProviderLineMarkerProviderTest : BasePlatformTestCase() {
         )
     }
 
-    fun testDoesNotCreateMarkerInsideCommentOrString() {
+    fun `test 주석이나 문자열 안에는 마커를 만들지 않는다`() {
         assertNull(provider.getLineMarkerInfo(psi("@riverpod", parentText = "// @riverpod")))
         assertNull(provider.getLineMarkerInfo(psi("@Riverpod", parentText = "/* @Riverpod */")))
         assertNull(provider.getLineMarkerInfo(psi("@riverpod", parentText = "'@riverpod'")))

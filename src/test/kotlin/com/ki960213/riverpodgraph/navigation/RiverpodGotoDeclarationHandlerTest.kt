@@ -15,7 +15,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         addRiverpodPubspec()
     }
 
-    fun testRedirectsProviderSymbolToSourceDeclaration() {
+    fun `test 프로바이더 심볼을 원본 선언으로 이동한다`() {
         myFixture.configureByText(
             "user.dart",
             """
@@ -38,7 +38,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertEquals("user", targets!!.single().text)
     }
 
-    fun testRedirectsProviderFutureModifierToSourceDeclaration() {
+    fun `test Future 수정자를 원본 선언으로 이동한다`() {
         myFixture.configureByText(
             "user.dart",
             """
@@ -59,7 +59,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertEquals("user", targets!!.single().text)
     }
 
-    fun testRedirectsProviderNotifierModifierToSourceDeclaration() {
+    fun `test Notifier 수정자를 원본 선언으로 이동한다`() {
         myFixture.configureByText(
             "session.dart",
             """
@@ -82,7 +82,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertEquals("SessionController", targets!!.single().text)
     }
 
-    fun testRedirectsGeneratedSuperclassToSourceClassDeclaration() {
+    fun `test 생성된 상위 클래스를 원본 클래스로 이동한다`() {
         myFixture.configureByText(
             "session.dart",
             """
@@ -103,7 +103,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertEquals("SessionController", targets!!.single().text)
     }
 
-    fun testReturnsNullOutsideDartFiles() {
+    fun `test Dart 파일 밖에서는 null을 반환한다`() {
         myFixture.configureByText(
             "foo.txt",
             """
@@ -119,7 +119,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertNull(targets)
     }
 
-    fun testReturnsAllDuplicateProviderTargets() {
+    fun `test 중복 프로바이더 대상을 모두 반환한다`() {
         myFixture.configureByText(
             "user.dart",
             """
@@ -145,7 +145,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertEquals(listOf("user", "User"), targets!!.map { it.text })
     }
 
-    fun testMergeKeepsCurrentFileDuplicateTargetsWhenIndexHasOne() {
+    fun `test 인덱스 대상이 하나여도 현재 파일의 중복 대상을 유지한다`() {
         myFixture.configureByText(
             "user.dart",
             """

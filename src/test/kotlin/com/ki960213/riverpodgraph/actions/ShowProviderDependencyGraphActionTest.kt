@@ -1,14 +1,13 @@
 package com.ki960213.riverpodgraph.actions
 
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
-import org.junit.Assert.assertEquals
-import org.junit.Test
 
-class ShowProviderDependencyGraphActionTest {
-    @Test
-    fun `builds provider graph from declaration source file when invoked from usage file`() {
+class ShowProviderDependencyGraphActionTest : StringSpec({
+    "사용 파일에서 실행해도 선언 파일 기준 그래프를 만든다" {
         val providerSource = """
             @riverpod
             String user(Ref ref) => 'Ada';
@@ -37,14 +36,10 @@ class ShowProviderDependencyGraphActionTest {
             declarations = declarations,
         )
 
-        assertEquals(
-            listOf("profileProvider->userProvider:WATCH:null"),
-            edges.map { "${it.fromProvider}->${it.toProvider}:${it.usageKind}:${it.marker}" },
-        )
+        (edges.map { "${it.fromProvider}->${it.toProvider}:${it.usageKind}:${it.marker}" }) shouldBe listOf("profileProvider->userProvider:WATCH:null")
     }
 
-    @Test
-    fun `marks cycles across provider source files`() {
+    "프로바이더 파일 간 순환을 표시한다" {
         val aSource = """
             @riverpod
             String a(Ref ref) {
@@ -68,12 +63,9 @@ class ShowProviderDependencyGraphActionTest {
             declarations = declarations,
         )
 
-        assertEquals(
-            listOf(
+        (edges.map { "${it.fromProvider}->${it.toProvider}:${it.usageKind}:${it.marker}" }) shouldBe listOf(
                 "aProvider->bProvider:${RiverpodUsageKind.WATCH}:${RiverpodMarker.CYCLE}",
                 "bProvider->aProvider:${RiverpodUsageKind.READ}:${RiverpodMarker.CYCLE}",
-            ),
-            edges.map { "${it.fromProvider}->${it.toProvider}:${it.usageKind}:${it.marker}" },
-        )
+            )
     }
-}
+})

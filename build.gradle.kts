@@ -15,6 +15,10 @@ kotlin {
 
 dependencies {
     testImplementation(libs.junit)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotest.runner.junit5)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly(libs.junit.vintage.engine)
 
     intellijPlatform {
         intellijIdea("2026.1.1")
@@ -56,6 +60,11 @@ tasks {
     }
 
     test {
-        useJUnit()
+        useJUnitPlatform()
     }
+}
+
+configurations.testRuntimeClasspath {
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
 }

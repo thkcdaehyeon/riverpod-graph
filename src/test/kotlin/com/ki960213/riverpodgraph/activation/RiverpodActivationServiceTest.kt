@@ -3,7 +3,7 @@ package com.ki960213.riverpodgraph.activation
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class RiverpodActivationServiceTest : BasePlatformTestCase() {
-    fun testFileInactiveWithoutRiverpodAnnotationDependency() {
+    fun `test riverpod_annotation 의존성이 없으면 파일은 비활성이다`() {
         myFixture.configureByText(
             "user.dart",
             """
