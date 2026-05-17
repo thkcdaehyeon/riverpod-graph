@@ -48,6 +48,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
         val declaration = declarationFromContext(e) ?: return
         project.launchRiverpodBackgroundTask("Analyze Riverpod Provider Dependencies") {
+            @Suppress("UnstableApiUsage")
             val edges = reportRawProgress { reporter ->
                 reporter.text("Analyzing Riverpod provider dependencies")
                 reporter.details(declaration.providerName)

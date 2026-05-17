@@ -26,7 +26,6 @@ import com.ki960213.riverpodgraph.ui.WidgetDependencyDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.coroutineContext
 
 class ShowWidgetDependenciesAction : AnAction() {
 
@@ -45,6 +44,8 @@ class ShowWidgetDependenciesAction : AnAction() {
         val caretOffset = e.getData(CommonDataKeys.EDITOR)?.caretModel?.offset
         project.launchRiverpodBackgroundTask("Analyze Riverpod Widget Dependencies") {
             val cancellationContext = coroutineContext
+
+            @Suppress("UnstableApiUsage")
             val result = reportRawProgress { reporter ->
                 reporter.text("Analyzing Riverpod widget dependencies")
                 reporter.details(file.virtualFile?.path ?: file.name)
@@ -66,8 +67,8 @@ class ShowWidgetDependenciesAction : AnAction() {
         val project = e.project
         val file = e.getData(CommonDataKeys.PSI_FILE)
         val relevant = project != null &&
-            file?.isRelevantDartFile() == true &&
-            RiverpodActivationService.getInstance(project).isFileActive(file)
+                file?.isRelevantDartFile() == true &&
+                RiverpodActivationService.getInstance(project).isFileActive(file)
         e.presentation.isEnabled = relevant
         e.presentation.isVisible = relevant
     }
@@ -206,16 +207,19 @@ class ShowWidgetDependenciesAction : AnAction() {
                         codeMask.markIgnored(index, end)
                         index = end
                     }
+
                     content.startsWith("/*", index) -> {
                         val end = blockCommentEnd(content, index)
                         codeMask.markIgnored(index, end)
                         index = end
                     }
+
                     content[index] == '\'' || content[index] == '"' -> {
                         val end = stringEnd(content, index)
                         codeMask.markIgnored(index, end)
                         index = end
                     }
+
                     else -> index++
                 }
             }
@@ -232,6 +236,7 @@ class ShowWidgetDependenciesAction : AnAction() {
                         depth++
                         index += 2
                     }
+
                     content.startsWith("*/", index) -> {
                         depth--
                         index += 2
@@ -239,6 +244,7 @@ class ShowWidgetDependenciesAction : AnAction() {
                             return index
                         }
                     }
+
                     else -> index++
                 }
             }
@@ -250,8 +256,8 @@ class ShowWidgetDependenciesAction : AnAction() {
             val quote = content[start]
             val triple = content.startsWith("$quote$quote$quote", start)
             val raw = start > 0 &&
-                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-                (start == 1 || !isIdentifierPart(content[start - 2]))
+                    (content[start - 1] == 'r' || content[start - 1] == 'R') &&
+                    (start == 1 || !isIdentifierPart(content[start - 2]))
             var index = start + if (triple) 3 else 1
 
             while (index < content.length) {

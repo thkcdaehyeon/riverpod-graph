@@ -6,6 +6,7 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.content.ContentFactory
 import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
@@ -16,7 +17,6 @@ import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import javax.swing.JTabbedPane
 
 class RiverpodToolWindowFactory : ToolWindowFactory {
     override suspend fun isApplicableAsync(project: Project): Boolean =
@@ -29,7 +29,7 @@ class RiverpodToolWindowFactory : ToolWindowFactory {
 
         val providersPanel = ProvidersPanel()
 
-        val tabs = JTabbedPane().apply {
+        val tabs = JBTabbedPane().apply {
             addTab("Providers", providersPanel)
             addTab("Dependencies", DependencyGraphPanel())
         }
@@ -44,6 +44,7 @@ class RiverpodToolWindowFactory : ToolWindowFactory {
 
 }
 
+@Suppress("UnstableApiUsage")
 private fun loadProvidersInBackground(project: Project, providersPanel: ProvidersPanel) {
     project.launchRiverpodBackgroundTask("Load Riverpod Providers") {
         val providers = reportRawProgress { reporter ->
