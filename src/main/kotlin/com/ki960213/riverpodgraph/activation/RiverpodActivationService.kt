@@ -1,6 +1,5 @@
 package com.ki960213.riverpodgraph.activation
 
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
@@ -12,6 +11,7 @@ import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
+import com.ki960213.riverpodgraph.platform.cancellableReadAction
 
 @Service(Service.Level.PROJECT)
 class RiverpodActivationService(private val project: Project) {
@@ -53,6 +53,6 @@ class RiverpodActivationService(private val project: Project) {
     companion object {
         fun getInstance(project: Project): RiverpodActivationService = project.service()
 
-        private fun <T> readAction(action: () -> T): T = ReadAction.compute<T, RuntimeException> { action() }
+        private fun <T> readAction(action: () -> T): T = cancellableReadAction(action)
     }
 }

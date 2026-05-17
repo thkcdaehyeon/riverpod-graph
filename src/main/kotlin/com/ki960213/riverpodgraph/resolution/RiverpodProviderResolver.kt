@@ -1,6 +1,5 @@
 package com.ki960213.riverpodgraph.resolution
 
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
@@ -9,6 +8,7 @@ import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
+import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 
 class RiverpodProviderResolver(private val project: Project) {
     fun findDeclarations(
@@ -69,9 +69,7 @@ class RiverpodProviderResolver(private val project: Project) {
         }
     }
 
-    companion object {
-        private fun <T> readAction(action: () -> T): T = ReadAction.compute<T, RuntimeException> { action() }
-    }
+    private fun <T> readAction(action: () -> T): T = smartCancellableReadAction(project, action)
 }
 
 internal fun sortProviderIndexValues(

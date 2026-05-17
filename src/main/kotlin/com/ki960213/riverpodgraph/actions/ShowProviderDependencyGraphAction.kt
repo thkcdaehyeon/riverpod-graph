@@ -5,7 +5,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -28,6 +27,7 @@ import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
+import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import com.ki960213.riverpodgraph.resolution.RiverpodProviderResolver
 import com.ki960213.riverpodgraph.ui.DependencyGraphPanel
 
@@ -104,9 +104,9 @@ class ShowProviderDependencyGraphAction : AnAction() {
         project: Project,
         file: PsiFile,
         declaration: RiverpodProviderDeclaration,
-    ): List<RiverpodDependencyEdge> = ReadAction.compute<List<RiverpodDependencyEdge>, RuntimeException> {
+    ): List<RiverpodDependencyEdge> = smartCancellableReadAction(project) {
         if (!file.isValid) {
-            return@compute emptyList()
+            return@smartCancellableReadAction emptyList()
         }
 
         val declarations = withAvailableIndex {

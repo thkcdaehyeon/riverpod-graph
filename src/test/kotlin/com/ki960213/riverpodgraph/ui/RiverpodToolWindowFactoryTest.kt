@@ -7,7 +7,7 @@ import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 
 class RiverpodToolWindowFactoryTest : StringSpec({
     "인덱스 값에서 프로바이더 경로와 오프셋으로 중복 제거 후 정렬한다" {
-        val declarations = RiverpodToolWindowFactory.providerDeclarationsFromIndexValues(
+        val declarations = providerDeclarationsFromIndexValues(
             listOf(
                 value(providerName = "zProvider", filePath = "lib/z.dart", textOffset = 4),
                 value(providerName = "aProvider", sourceName = "a", filePath = "lib/a.dart", textOffset = 8),

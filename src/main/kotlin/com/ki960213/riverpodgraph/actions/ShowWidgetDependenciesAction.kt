@@ -5,7 +5,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
@@ -23,6 +22,7 @@ import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
+import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import com.ki960213.riverpodgraph.ui.WidgetDependencyDialog
 
 class ShowWidgetDependenciesAction : AnAction() {
@@ -73,9 +73,9 @@ class ShowWidgetDependenciesAction : AnAction() {
         project: Project,
         file: PsiFile,
         caretOffset: Int?,
-    ): WidgetDependencyResult? = ReadAction.compute<WidgetDependencyResult?, RuntimeException> {
+    ): WidgetDependencyResult? = smartCancellableReadAction(project) {
         if (!file.isValid) {
-            return@compute null
+            return@smartCancellableReadAction null
         }
 
         val filePath = file.virtualFile?.path ?: file.name
