@@ -4,17 +4,15 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
@@ -27,9 +25,12 @@ import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
+import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import com.ki960213.riverpodgraph.resolution.RiverpodProviderResolver
 import com.ki960213.riverpodgraph.ui.DependencyGraphPanel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class ShowProviderDependencyGraphAction : AnAction() {
 
@@ -46,18 +47,20 @@ class ShowProviderDependencyGraphAction : AnAction() {
         }
 
         val declaration = declarationFromContext(e) ?: return
-        ProgressManager.getInstance().run(
-            object : Task.Backgroundable(project, "Analyze Riverpod Provider Dependencies", false) {
-                override fun run(indicator: ProgressIndicator) {
-                    val edges = dependencyEdges(project, file, declaration)
-                    ApplicationManager.getApplication().invokeLater {
-                        if (!project.isDisposed) {
-                            showGraph(project, declaration.providerName, edges)
-                        }
-                    }
+        project.launchRiverpodBackgroundTask("Analyze Riverpod Provider Dependencies") {
+            val edges = reportRawProgress { reporter ->
+                reporter.text("Analyzing Riverpod provider dependencies")
+                reporter.details(declaration.providerName)
+                val edges = dependencyEdges(project, file, declaration)
+                reporter.fraction(1.0)
+                edges
+            }
+            withContext(Dispatchers.EDT) {
+                if (!project.isDisposed) {
+                    showGraph(project, declaration.providerName, edges)
                 }
-            },
-        )
+            }
+        }
     }
 
     override fun update(e: AnActionEvent) {

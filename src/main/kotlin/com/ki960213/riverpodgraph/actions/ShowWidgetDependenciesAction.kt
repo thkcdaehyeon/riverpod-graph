@@ -4,11 +4,9 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FilenameIndex
@@ -22,8 +20,13 @@ import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
+import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import com.ki960213.riverpodgraph.ui.WidgetDependencyDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 class ShowWidgetDependenciesAction : AnAction() {
 
@@ -40,18 +43,23 @@ class ShowWidgetDependenciesAction : AnAction() {
         }
 
         val caretOffset = e.getData(CommonDataKeys.EDITOR)?.caretModel?.offset
-        ProgressManager.getInstance().run(
-            object : Task.Backgroundable(project, "Analyze Riverpod Widget Dependencies", false) {
-                override fun run(indicator: ProgressIndicator) {
-                    val result = analyzeWidgetDependencies(project, file, caretOffset) ?: return
-                    ApplicationManager.getApplication().invokeLater {
-                        if (!project.isDisposed) {
-                            WidgetDependencyDialog(project, result).show()
-                        }
-                    }
+        project.launchRiverpodBackgroundTask("Analyze Riverpod Widget Dependencies") {
+            val cancellationContext = coroutineContext
+            val result = reportRawProgress { reporter ->
+                reporter.text("Analyzing Riverpod widget dependencies")
+                reporter.details(file.virtualFile?.path ?: file.name)
+                val result = analyzeWidgetDependencies(project, file, caretOffset) {
+                    cancellationContext.ensureActive()
                 }
-            },
-        )
+                reporter.fraction(1.0)
+                result
+            } ?: return@launchRiverpodBackgroundTask
+            withContext(Dispatchers.EDT) {
+                if (!project.isDisposed) {
+                    WidgetDependencyDialog(project, result).show()
+                }
+            }
+        }
     }
 
     override fun update(e: AnActionEvent) {
@@ -73,6 +81,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         project: Project,
         file: PsiFile,
         caretOffset: Int?,
+        checkCanceled: () -> Unit,
     ): WidgetDependencyResult? = smartCancellableReadAction(project) {
         if (!file.isValid) {
             return@smartCancellableReadAction null
@@ -84,7 +93,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         val providerNames = declarations.map { it.providerName }.toSet()
             .ifEmpty { fallbackProviderNames(content) }
         val extensionDependencies = withAvailableIndex {
-            extensionDependenciesInReadAction(project, providerNames)
+            extensionDependenciesInReadAction(project, providerNames, checkCanceled)
         } ?: RefExtensionScanner.scan(filePath, content, providerNames)
 
         WidgetDependencyAnalyzer.analyze(
@@ -124,6 +133,7 @@ class ShowWidgetDependenciesAction : AnAction() {
     private fun extensionDependenciesInReadAction(
         project: Project,
         providerNames: Set<String>,
+        checkCanceled: () -> Unit,
     ): List<RefExtensionDependency> {
         if (providerNames.isEmpty()) {
             return emptyList()
@@ -136,10 +146,10 @@ class ShowWidgetDependenciesAction : AnAction() {
             .asSequence()
             .filter { file -> file.name.endsWith(".dart") && !file.name.endsWith(".g.dart") }
             .flatMap { file ->
-                ProgressManager.checkCanceled()
+                checkCanceled()
                 val psiFile = psiManager.findFile(file) ?: return@flatMap emptySequence()
                 val text = psiFile.text
-                if (!mayContainRefExtension(text, providerNames)) {
+                if (!mayContainRefExtension(text, providerNames, checkCanceled)) {
                     emptySequence()
                 } else {
                     RefExtensionScanner.scan(
@@ -153,13 +163,17 @@ class ShowWidgetDependenciesAction : AnAction() {
             .toList()
     }
 
-    private fun mayContainRefExtension(text: String, providerNames: Set<String>): Boolean {
+    private fun mayContainRefExtension(
+        text: String,
+        providerNames: Set<String>,
+        checkCanceled: () -> Unit,
+    ): Boolean {
         if (!text.contains("extension")) {
             return false
         }
 
         return providerNames.any { providerName ->
-            ProgressManager.checkCanceled()
+            checkCanceled()
             text.contains(providerName)
         }
     }
