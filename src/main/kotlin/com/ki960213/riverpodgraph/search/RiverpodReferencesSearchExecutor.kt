@@ -19,7 +19,7 @@ import com.ki960213.riverpodgraph.analysis.ProviderUsageScanner
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
-import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
+import com.ki960213.riverpodgraph.index.NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 
 class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>(true) {
@@ -84,7 +84,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
 
     private fun providerTargetFor(symbol: String, scope: GlobalSearchScope): ProviderTarget? {
         val values = withAvailableIndex {
-            FileBasedIndex.getInstance().getValues(RiverpodProviderIndex.NAME, symbol, scope)
+            FileBasedIndex.getInstance().getValues(NAME, symbol, scope)
         }.orEmpty()
         if (values.isEmpty()) {
             return null

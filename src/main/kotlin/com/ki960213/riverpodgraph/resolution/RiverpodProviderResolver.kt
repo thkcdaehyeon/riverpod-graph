@@ -5,7 +5,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
-import com.ki960213.riverpodgraph.index.RiverpodProviderIndex
+import com.ki960213.riverpodgraph.index.NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
@@ -44,7 +44,7 @@ class RiverpodProviderResolver(private val project: Project) {
         scope: GlobalSearchScope,
     ): List<RiverpodProviderDeclaration> {
         return sortProviderIndexValues(
-            FileBasedIndex.getInstance().getValues(RiverpodProviderIndex.NAME, symbol, scope),
+            FileBasedIndex.getInstance().getValues(NAME, symbol, scope),
         )
     }
 
@@ -58,7 +58,7 @@ class RiverpodProviderResolver(private val project: Project) {
         }
 
         val filesByPath = FileBasedIndex.getInstance()
-            .getContainingFiles(RiverpodProviderIndex.NAME, symbol, scope)
+            .getContainingFiles(NAME, symbol, scope)
             .associateBy { it.path }
         val psiManager = PsiManager.getInstance(project)
 

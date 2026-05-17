@@ -40,9 +40,6 @@ class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIn
     override fun getVersion(): Int = 2
     override fun dependsOnFileContent(): Boolean = true
 
-    companion object {
-        val NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")
-    }
 }
 
 private fun RiverpodProviderDeclaration.toIndexValue(): RiverpodProviderIndexValue = RiverpodProviderIndexValue(
@@ -58,3 +55,5 @@ private fun RiverpodProviderDeclaration.toIndexValue(): RiverpodProviderIndexVal
     textOffset = textOffset,
     line = line,
 )
+
+val NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")
