@@ -18,11 +18,11 @@ class ShowProviderDependencyGraphActionTest : StringSpec({
               return Profile(user);
             }
         """.trimIndent()
-        val usageSource = """
+        val usageSource = $$"""
             class HomeScreen extends ConsumerWidget {
               Widget build(BuildContext context, WidgetRef ref) {
                 final profile = ref.watch(profileProvider);
-                return Text('${'$'}profile');
+                return Text('$profile');
               }
             }
         """.trimIndent()

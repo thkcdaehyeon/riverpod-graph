@@ -62,13 +62,13 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
     fun `test Notifier 수정자를 원본 선언으로 이동한다`() {
         myFixture.configureByText(
             "session.dart",
-            """
+            $$"""
             import riverpod_annotation;
 
             part 'session.g.dart';
 
             @riverpod
-            class SessionController extends _${'$'}SessionController {
+            class SessionController extends _$SessionController {
               String build() => 'Ada';
             }
 
@@ -170,7 +170,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertEquals(listOf("user", "User"), merged.map { it.text })
     }
 
-    private fun targetsAtCaret(): Array<com.intellij.psi.PsiElement>? {
+    private fun targetsAtCaret(): Array<PsiElement>? {
         val handler = RiverpodGotoDeclarationHandler()
         val source = myFixture.file.findElementAt(myFixture.caretOffset - 1)
         return handler.getGotoDeclarationTargets(source, myFixture.caretOffset, myFixture.editor)

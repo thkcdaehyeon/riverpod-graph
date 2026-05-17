@@ -77,7 +77,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
     }
 
     private fun isGeneratedRiverpodSymbol(symbol: String): Boolean =
-        symbol.endsWith("Provider") || symbol.startsWith("_${'$'}")
+        symbol.endsWith("Provider") || symbol.startsWith("_$")
 
     private fun symbolAt(element: PsiElement, offset: Int): String? {
         val lookupOffset = when {
@@ -87,9 +87,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         }
 
         return sequenceOf(element, element.parent)
-            .filterNotNull()
-            .mapNotNull { candidate -> identifierAt(candidate, lookupOffset) }
-            .firstOrNull()
+            .filterNotNull().firstNotNullOfOrNull { candidate -> identifierAt(candidate, lookupOffset) }
     }
 
     private fun identifierAt(element: PsiElement, offset: Int): String? {
@@ -148,11 +146,6 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         return null
     }
 
-    private companion object {
-        val IDENTIFIER_REGEX = Regex("""[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*""")
-        val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
-    }
-
     private class TextOffsetPsiElement(
         private val file: PsiFile,
         private val sourceName: String,
@@ -209,3 +202,6 @@ private fun targetLocation(target: PsiElement): TargetLocation =
         textRange = target.textRange,
         textOffset = target.textOffset,
     )
+
+val IDENTIFIER_REGEX = Regex($$"""[_$A-Za-z][_$A-Za-z0-9]*""")
+val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")

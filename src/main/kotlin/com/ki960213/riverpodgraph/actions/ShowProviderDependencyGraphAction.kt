@@ -1,5 +1,6 @@
 package com.ki960213.riverpodgraph.actions
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -31,6 +32,9 @@ import com.ki960213.riverpodgraph.resolution.RiverpodProviderResolver
 import com.ki960213.riverpodgraph.ui.DependencyGraphPanel
 
 class ShowProviderDependencyGraphAction : AnAction() {
+
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
@@ -88,14 +92,12 @@ class ShowProviderDependencyGraphAction : AnAction() {
     ) {
         val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID) ?: return
 
-        toolWindow.show(
-            Runnable {
-                DependencyGraphPanel.findIn(toolWindow.component)?.let { graphPanel ->
-                    graphPanel.showProviderGraph(providerName, edges)
-                    DependencyGraphPanel.selectTabContaining(toolWindow.component, graphPanel)
-                }
-            },
-        )
+        toolWindow.show {
+            DependencyGraphPanel.findIn(toolWindow.component)?.let { graphPanel ->
+                graphPanel.showProviderGraph(providerName, edges)
+                DependencyGraphPanel.selectTabContaining(toolWindow.component, graphPanel)
+            }
+        }
     }
 
     private fun dependencyEdges(
@@ -266,11 +268,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
     private companion object {
         const val TOOL_WINDOW_ID = "Riverpod Graph"
-        val IDENTIFIER_REGEX = Regex("""[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*""")
-        val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
 
-        fun isProviderChainChar(char: Char): Boolean =
-            char == '.' || char == '_' || char == '$' || char.isLetterOrDigit() || char.isWhitespace()
     }
 }
 
@@ -297,3 +295,9 @@ internal fun providerGraphEdgesForSourceFiles(
 
     return ProviderDependencyAnalyzer.markCycles(edges).distinct()
 }
+
+val IDENTIFIER_REGEX = Regex($$"""[_$A-Za-z][_$A-Za-z0-9]*""")
+val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
+
+fun isProviderChainChar(char: Char): Boolean =
+    char == '.' || char == '_' || char == '$' || char.isLetterOrDigit() || char.isWhitespace()
