@@ -2,12 +2,11 @@ package com.ki960213.riverpodgraph
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import java.nio.file.Files
 import java.nio.file.Path
 
 class BuildConfigurationTest : StringSpec({
     "최신 IntelliJ IDEA 릴리스 브랜치를 대상으로 빌드한다" {
-        val buildFile = Files.readString(Path.of("build.gradle.kts"))
+        val buildFile = Path.of("build.gradle.kts").readUtf8Text()
 
         (buildFile.contains("""intellijIdea("2026.1.1")""")) shouldBe true
         (buildFile.contains("""sinceBuild.set("261")""")) shouldBe true

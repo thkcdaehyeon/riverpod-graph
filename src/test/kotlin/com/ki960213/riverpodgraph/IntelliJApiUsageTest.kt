@@ -6,7 +6,6 @@ import com.ki960213.riverpodgraph.actions.ShowWidgetDependenciesAction
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
-import java.nio.file.Files
 import java.nio.file.Path
 
 class IntelliJApiUsageTest : StringSpec({
@@ -17,13 +16,11 @@ class IntelliJApiUsageTest : StringSpec({
 
     "production code does not use deprecated ReadAction compute API" {
         val sourceRoot = Path.of("src", "main", "kotlin")
-        val offenders = Files.walk(sourceRoot).use { paths ->
-            paths
-                .filter { path -> Files.isRegularFile(path) && path.toString().endsWith(".kt") }
-                .filter { path -> Files.readString(path).contains("ReadAction.compute") }
-                .map { path -> sourceRoot.relativize(path).toString() }
-                .toList()
-        }
+        val offenders = sourceRoot.toFile().walkTopDown()
+            .filter { file -> file.isFile && file.extension == "kt" }
+            .filter { file -> file.toPath().containsText("ReadAction.compute") }
+            .map { file -> sourceRoot.relativize(file.toPath()).toString() }
+            .toList()
 
         offenders.shouldBeEmpty()
     }
@@ -35,18 +32,16 @@ class IntelliJApiUsageTest : StringSpec({
             "Task.Backgroundable",
             "com.intellij.openapi.progress.ProgressIndicator",
         )
-        val offenders = Files.walk(sourceRoot).use { paths ->
-            paths
-                .filter { path -> Files.isRegularFile(path) && path.toString().endsWith(".kt") }
-                .flatMap { path ->
-                    val source = Files.readString(path)
-                    forbiddenSnippets
-                        .filter { snippet -> source.contains(snippet) }
-                        .map { snippet -> "${sourceRoot.relativize(path)} uses $snippet" }
-                        .stream()
-                }
-                .toList()
-        }
+        val offenders = sourceRoot.toFile().walkTopDown()
+            .filter { file -> file.isFile && file.extension == "kt" }
+            .flatMap { file ->
+                val path = file.toPath()
+                val source = path.readUtf8Text()
+                forbiddenSnippets
+                    .filter { snippet -> source.contains(snippet) }
+                    .map { snippet -> "${sourceRoot.relativize(path)} uses $snippet" }
+            }
+            .toList()
 
         offenders.shouldBeEmpty()
     }
@@ -58,7 +53,7 @@ class IntelliJApiUsageTest : StringSpec({
             Path.of("src", "main", "kotlin", "com", "ki960213", "riverpodgraph", "ui", "RiverpodToolWindowFactory.kt"),
         )
         val offenders = backgroundEntryPoints
-            .filter { path -> Files.readString(path).contains("ProgressManager") }
+            .filter { path -> path.containsText("ProgressManager") }
             .map { path -> path.fileName.toString() }
 
         offenders.shouldBeEmpty()

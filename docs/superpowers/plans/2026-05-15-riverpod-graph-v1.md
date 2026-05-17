@@ -41,13 +41,12 @@ package com.ki960213.riverpodgraph
 
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.nio.file.Files
 import java.nio.file.Path
 
 class PluginManifestTest {
     @Test
     fun `plugin manifest depends on Dart and not Compose`() {
-        val xml = Files.readString(Path.of("src/main/resources/META-INF/plugin.xml"))
+        val xml = Path.of("src/main/resources/META-INF/plugin.xml").toFile().readText()
 
         assertTrue(xml.contains("<depends>Dart</depends>"))
         assertTrue(!xml.contains("com.intellij.modules.compose"))
