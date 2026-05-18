@@ -240,6 +240,7 @@ class WidgetDependencyAnalyzerTest : StringSpec({
 
 })
 
+/** 테스트용 프로바이더 선언 값을 지정한 위치 정보로 생성합니다. */
 private fun declaration(
     sourceName: String,
     providerName: String,

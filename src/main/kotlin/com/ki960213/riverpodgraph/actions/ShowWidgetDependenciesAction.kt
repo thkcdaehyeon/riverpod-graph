@@ -80,6 +80,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         e.presentation.isVisible = relevant
     }
 
+    /** 현재 파일과 커서 위치를 기준으로 위젯의 프로바이더 의존성을 분석합니다. */
     private fun analyzeWidgetDependencies(
         project: Project,
         file: PsiFile,
@@ -109,6 +110,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         )
     }
 
+    /** 파일 기반 인덱스에서 프로젝트의 모든 프로바이더 선언을 읽습니다. */
     private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
         val index = FileBasedIndex.getInstance()
         val scope = GlobalSearchScope.projectScope(project)
@@ -118,6 +120,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         return providerDeclarationsFromIndexValues(values)
     }
 
+    /** 프로젝트 Dart 파일에서 ref 확장 멤버가 참조하는 프로바이더 의존성을 수집합니다. */
     private fun extensionDependenciesInReadAction(
         project: Project,
         providerNames: Set<String>,
@@ -151,6 +154,7 @@ class ShowWidgetDependenciesAction : AnAction() {
             .toList()
     }
 
+    /** 텍스트가 ref 확장 스캔 대상이 될 가능성이 있는지 빠르게 확인합니다. */
     private fun mayContainRefExtension(
         text: String,
         providerNames: Set<String>,
@@ -166,6 +170,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         }
     }
 
+    /** 인덱스가 아직 준비되지 않은 경우 실패 대신 null을 반환합니다. */
     private fun <T> withAvailableIndex(action: () -> T): T? {
         return try {
             action()

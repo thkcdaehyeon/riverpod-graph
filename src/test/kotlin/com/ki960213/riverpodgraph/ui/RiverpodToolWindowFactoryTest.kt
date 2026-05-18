@@ -26,6 +26,7 @@ class RiverpodToolWindowFactoryTest : StringSpec({
 
 })
 
+/** 도구 창 로딩 테스트에 사용할 프로바이더 인덱스 값을 생성합니다. */
 private fun value(
     providerName: String,
     sourceName: String = providerName.removeSuffix("Provider"),

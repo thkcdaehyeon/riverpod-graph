@@ -46,6 +46,7 @@ object PubspecDependencyParser {
         return false
     }
 
+    /** YAML 행에서 콜론 앞의 키를 추출하고 따옴표를 제거합니다. */
     private fun yamlKey(line: String): String? {
         val separator = line.indexOf(':')
         if (separator == -1) return null
@@ -53,6 +54,7 @@ object PubspecDependencyParser {
         return unquote(line.substring(0, separator).trim())
     }
 
+    /** 따옴표로 감싼 YAML 키에서 바깥따옴표만 제거합니다. */
     private fun unquote(key: String): String {
         if (key.length < 2) return key
 

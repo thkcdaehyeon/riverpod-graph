@@ -46,12 +46,14 @@ class RiverpodProviderLineMarkerProviderTest : BasePlatformTestCase() {
         assertNull(provider.getLineMarkerInfo(psi("@Riverpod", parentText = "\"@Riverpod\"")))
     }
 
+    /** 테스트용 Dart 조각을 PSI 요소로 구성합니다. */
     private fun psi(text: String, parentText: String? = null): PsiElement {
         val containingFile = myFixture.configureByText("scratch.dart", parentText ?: text)
         val parent = parentText?.let { fakeElement(it, 0, null, containingFile) }
         return fakeElement(text, parentText?.indexOf(text)?.takeIf { it >= 0 } ?: 0, parent, containingFile)
     }
 
+    /** 지정한 텍스트와 위치를 반환하는 가짜 PSI 요소를 만듭니다. */
     private fun fakeElement(text: String, startOffset: Int, parent: PsiElement?, containingFile: PsiFile): PsiElement =
         object : FakePsiElement() {
             override fun getParent(): PsiElement? = parent
@@ -62,6 +64,7 @@ class RiverpodProviderLineMarkerProviderTest : BasePlatformTestCase() {
             override fun getTextRange(): TextRange = TextRange.from(startOffset, text.length)
         }
 
+    /** Riverpod 기능이 활성화되도록 테스트 프로젝트에 pubspec.yaml을 추가합니다. */
     private fun addRiverpodPubspec() {
         myFixture.addFileToProject(
             "pubspec.yaml",

@@ -167,12 +167,14 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         assertEquals(listOf("user", "User"), merged.map { it.text })
     }
 
+    /** 현재 캐럿 위치에서 이동 대상 목록을 조회합니다. */
     private fun targetsAtCaret(): Array<PsiElement>? {
         val handler = RiverpodGotoDeclarationHandler()
         val source = myFixture.file.findElementAt(myFixture.caretOffset - 1)
         return handler.getGotoDeclarationTargets(source, myFixture.caretOffset, myFixture.editor)
     }
 
+    /** 현재 파일 대상 병합 테스트에 사용할 가짜 PSI 대상을 만듭니다. */
     private fun target(text: String, offset: Int, file: PsiFile): PsiElement = object : FakePsiElement() {
         override fun getParent(): PsiElement = file
         override fun getContainingFile(): PsiFile = file
@@ -181,6 +183,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
         override fun getTextRange(): TextRange = TextRange.from(offset, text.length)
     }
 
+    /** Riverpod 기능이 활성화되도록 테스트 프로젝트에 pubspec.yaml을 추가합니다. */
     private fun addRiverpodPubspec() {
         myFixture.addFileToProject(
             "pubspec.yaml",

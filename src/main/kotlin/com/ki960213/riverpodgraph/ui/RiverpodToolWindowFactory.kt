@@ -48,6 +48,7 @@ class RiverpodToolWindowFactory : ToolWindowFactory {
 }
 
 @Suppress("UnstableApiUsage")
+/** 백그라운드 작업에서 프로바이더 인덱스를 읽어 프로바이더 패널에 반영합니다. */
 private fun loadProvidersInBackground(project: Project, providersPanel: ProvidersPanel) {
     project.launchRiverpodBackgroundTask("Load Riverpod Providers") {
         val providers = reportRawProgress { reporter ->

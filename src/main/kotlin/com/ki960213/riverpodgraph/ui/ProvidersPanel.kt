@@ -55,6 +55,7 @@ class ProvidersPanel : JPanel(BorderLayout()) {
         return rows
     }
 
+    /** 트리에 렌더링된 모든 프로바이더 행 문자열을 파일 순서대로 수집합니다. */
     private fun collectProviderRows(): List<String> = (0 until root.childCount).flatMap { fileIndex ->
         val fileNode = root.getChildAt(fileIndex) as DefaultMutableTreeNode
         (0 until fileNode.childCount).map { providerIndex ->

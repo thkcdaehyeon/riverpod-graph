@@ -21,6 +21,7 @@ class RiverpodProviderResolverTest : StringSpec({
 
 })
 
+/** 테스트용 인덱스 값을 지정한 파일 경로와 오프셋으로 생성합니다. */
 private fun value(
     sourceName: String,
     filePath: String,

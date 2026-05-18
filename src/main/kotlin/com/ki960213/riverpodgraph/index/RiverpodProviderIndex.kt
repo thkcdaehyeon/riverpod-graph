@@ -46,6 +46,7 @@ class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIn
 
 }
 
+/** 파싱된 프로바이더 선언을 파일 기반 인덱스에 저장할 값으로 변환합니다. */
 private fun RiverpodProviderDeclaration.toIndexValue(): RiverpodProviderIndexValue = RiverpodProviderIndexValue(
     kind = kind,
     sourceName = sourceName,

@@ -103,6 +103,7 @@ object WidgetDependencyAnalyzer {
         val buildRange: IntRange?,
     )
 
+    /** 파일 안의 위젯 클래스마다 클래스 범위와 build 범위를 계산합니다. */
     private fun widgetContexts(
         content: String,
         codeMask: BooleanArray,
@@ -118,6 +119,7 @@ object WidgetDependencyAnalyzer {
         )
     }.toList()
 
+    /** 커서 위치가 포함된 위젯을 우선 선택하고 없으면 첫 위젯을 반환합니다. */
     private fun selectWidget(widgetContexts: List<WidgetContext>, caretOffset: Int?): WidgetContext? {
         if (widgetContexts.isEmpty()) {
             return null
@@ -131,6 +133,7 @@ object WidgetDependencyAnalyzer {
             ?: widgetContexts.first()
     }
 
+    /** Stateful 계열 위젯의 State 클래스에서 build 메서드 범위를 찾습니다. */
     private fun findStateBuildRange(
         content: String,
         codeMask: BooleanArray,
@@ -146,12 +149,14 @@ object WidgetDependencyAnalyzer {
         return findBuildRange(content, codeMask, stateRange)
     }
 
+    /** 클래스 선언의 중괄호 본문 범위를 반환합니다. */
     private fun classRange(content: String, codeMask: BooleanArray, classOffset: Int): IntRange? {
         val bodyStart = findNextCodeChar(content, codeMask, '{', classOffset) ?: return null
         val bodyEnd = findMatchingPair(content, codeMask, bodyStart, '{', '}') ?: return null
         return bodyStart..bodyEnd
     }
 
+    /** 검색 범위 안에서 Widget build 메서드의 본문 또는 표현식 범위를 찾습니다. */
     private fun findBuildRange(content: String, codeMask: BooleanArray, searchRange: IntRange): IntRange? {
         val code = codeOnly(content, codeMask)
         val buildMatch = buildMethodRegex.find(code, searchRange.first) ?: return null
@@ -175,6 +180,7 @@ object WidgetDependencyAnalyzer {
         }
     }
 
+    /** 생성자 호출 주변 컨텍스트를 보고 반복, 콜백, 조건 마커를 결정합니다. */
     private fun markerFor(code: String, offset: Int): RiverpodMarker? {
         val prefix = code.substring(markerContextStart(code, offset), offset)
         return when {
@@ -185,6 +191,7 @@ object WidgetDependencyAnalyzer {
         }
     }
 
+    /** 마커 판단에 사용할 직전 문장 또는 인자 구간의 시작 오프셋을 찾습니다. */
     private fun markerContextStart(code: String, offset: Int): Int {
         var index = offset - 1
         while (index >= 0) {
@@ -197,6 +204,7 @@ object WidgetDependencyAnalyzer {
         return 0
     }
 
+    /** 프로바이더별 직접 호출 감지를 위한 원본 함수 이름 목록을 구성합니다. */
     private fun directCallSourceNamesByProvider(
         providerNames: Set<String>,
         declarations: List<RiverpodProviderDeclaration>,
@@ -211,6 +219,7 @@ object WidgetDependencyAnalyzer {
         }
     }
 
+    /** 같은 파일에 선언된 프로바이더 오프셋을 프로바이더 이름별로 묶습니다. */
     private fun declarationOffsetsByProvider(
         filePath: String,
         declarations: List<RiverpodProviderDeclaration>,
@@ -219,6 +228,7 @@ object WidgetDependencyAnalyzer {
         .groupBy { it.providerName }
         .mapValues { (_, declarations) -> declarations.map { it.textOffset }.toSet() }
 
+    /** 위젯 이름 매치가 생성자 호출이 아니라 클래스 선언부인지 확인합니다. */
     private fun isWidgetConstructorDeclaration(code: String, widgetName: String, offset: Int): Boolean {
         if (!code.startsWith(widgetName, offset)) {
             return false
@@ -228,9 +238,11 @@ object WidgetDependencyAnalyzer {
         return Regex("""\bclass\s+${Regex.escape(widgetName)}\b""").containsMatchIn(prefix)
     }
 
+    /** 위젯 클래스를 찾지 못했을 때 파일명에서 표시용 위젯 이름을 만듭니다. */
     private fun fallbackWidgetName(filePath: String): String =
         filePath.substringAfterLast('/').removeSuffix(".dart").ifBlank { "Widget" }
 
+    /** 표현식 build 본문이나 문장의 세미콜론 다음 위치를 반환합니다. */
     private fun statementEnd(content: String, codeMask: BooleanArray, start: Int): Int {
         var index = start
         while (index < content.length) {

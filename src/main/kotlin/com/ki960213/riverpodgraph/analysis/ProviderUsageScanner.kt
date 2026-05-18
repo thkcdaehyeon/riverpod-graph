@@ -56,6 +56,7 @@ object ProviderUsageScanner {
             .distinctBy { Triple(it.providerName, it.textOffset, it.kind) }
     }
 
+    /** ref.watch/read/listen 등으로 직접 참조된 프로바이더 사용을 찾습니다. */
     private fun refCallUsages(
         filePath: String,
         content: String,
@@ -79,6 +80,7 @@ object ProviderUsageScanner {
         }.toList()
     }
 
+    /** overrideWith 계열 호출에서 프로바이더 오버라이드 사용을 찾습니다. */
     private fun overrideUsages(
         filePath: String,
         content: String,
@@ -98,6 +100,7 @@ object ProviderUsageScanner {
         }.toList()
     }
 
+    /** 프로바이더 원본 함수 이름을 직접 호출한 위치를 의존성 사용으로 수집합니다. */
     private fun directCallUsages(
         filePath: String,
         content: String,
@@ -129,6 +132,7 @@ object ProviderUsageScanner {
         }
     }
 
+    /** Ref 확장 멤버 호출을 해당 멤버가 내부에서 읽는 프로바이더 사용으로 변환합니다. */
     private fun extensionMemberUsages(
         filePath: String,
         content: String,
@@ -169,6 +173,7 @@ object ProviderUsageScanner {
         }
     }
 
+    /** 오프셋 앞의 유효 코드가 점이면 멤버 접근으로 판단합니다. */
     private fun isMemberAccess(code: String, offset: Int): Boolean {
         var index = offset - 1
         while (index >= 0 && code[index].isWhitespace()) {
@@ -177,6 +182,7 @@ object ProviderUsageScanner {
         return index >= 0 && code[index] == '.'
     }
 
+    /** 프로바이더 이름 뒤의 .notifier, .future, .select 수식자를 사용 종류로 해석합니다. */
     private fun modifierKind(code: String, offset: Int): RiverpodUsageKind? {
         var index = skipWhitespace(code, offset)
         if (index >= code.length || code[index] != '.') {
@@ -194,6 +200,7 @@ object ProviderUsageScanner {
         }
     }
 
+    /** ref 메서드 이름을 기본 Riverpod 사용 종류로 매핑합니다. */
     private fun refMethodKind(method: String): RiverpodUsageKind = when (method) {
         "watch" -> RiverpodUsageKind.WATCH
         "read" -> RiverpodUsageKind.READ
@@ -203,6 +210,7 @@ object ProviderUsageScanner {
         else -> RiverpodUsageKind.READ
     }
 
+    /** 직접 호출 후보 앞의 텍스트가 함수나 변수 선언부처럼 보이는지 판별합니다. */
     private fun isLikelyDeclarationPrefix(code: String, offset: Int): Boolean {
         val prefix = annotationLineRegex.replace(declarationLookbackPrefix(code, offset), " ").trim()
         if (prefix.isEmpty()) {
@@ -223,6 +231,7 @@ object ProviderUsageScanner {
         return declarationPrefixRegex.matches(prefix)
     }
 
+    /** 선언 여부 판단에 필요한 직전 경계 문자 이후의 접두 텍스트를 추출합니다. */
     private fun declarationLookbackPrefix(code: String, offset: Int): String {
         var index = offset - 1
         while (index >= 0) {
@@ -235,6 +244,7 @@ object ProviderUsageScanner {
         return code.substring(0, offset)
     }
 
+    /** 공통 필드와 줄 번호를 채워 프로바이더 사용 모델을 만듭니다. */
     private fun usage(
         providerName: String,
         kind: RiverpodUsageKind,
@@ -251,6 +261,7 @@ object ProviderUsageScanner {
         marker = marker,
     )
 
+    /** [start]부터 연속된 공백을 건너뛴 첫 위치를 반환합니다. */
     private fun skipWhitespace(content: String, start: Int): Int {
         var index = start
         while (index < content.length && content[index].isWhitespace()) {
@@ -259,6 +270,7 @@ object ProviderUsageScanner {
         return index
     }
 
+    /** [start]에서 시작하는 Dart 식별자 조각의 끝 위치를 찾습니다. */
     private fun identifierEnd(content: String, start: Int): Int {
         var index = start
         while (index < content.length && isIdentifierPart(content[index])) {
@@ -267,9 +279,11 @@ object ProviderUsageScanner {
         return index
     }
 
+    /** 파일 오프셋을 1부터 시작하는 줄 번호로 변환합니다. */
     private fun lineOf(content: String, offset: Int): Int =
         content.substring(0, offset.coerceAtLeast(0).coerceAtMost(content.length)).count { it == '\n' } + 1
 
+    /** Dart 식별자 일부로 허용되는 문자인지 확인합니다. */
     private fun isIdentifierPart(char: Char): Boolean =
         char == '_' || char == '$' || char.isLetterOrDigit()
 

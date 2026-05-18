@@ -36,6 +36,7 @@ object RiverpodAnnotationParser {
         }.toList()
     }
 
+    /** Riverpod 어노테이션의 인자 목록을 읽고 어노테이션이 끝나는 위치를 계산합니다. */
     private fun annotationEnd(content: String, codeMask: BooleanArray, start: Int): AnnotationEnd? {
         val argsStart = skipInlineWhitespace(content, start)
         if (argsStart >= content.length || content[argsStart] != '(' || !codeMask[argsStart]) {
@@ -49,6 +50,7 @@ object RiverpodAnnotationParser {
         )
     }
 
+    /** 어노테이션 뒤의 클래스 선언을 Riverpod notifier 프로바이더 선언으로 변환합니다. */
     private fun parseClass(
         filePath: String,
         content: String,
@@ -87,6 +89,7 @@ object RiverpodAnnotationParser {
         )
     }
 
+    /** notifier 클래스 본문에서 build 메서드의 반환 타입과 family 파라미터 시그니처를 추출합니다. */
     private fun parseBuildMethod(
         content: String,
         codeMask: BooleanArray,
@@ -133,6 +136,7 @@ object RiverpodAnnotationParser {
         return null
     }
 
+    /** 어노테이션 뒤의 함수 선언을 Riverpod 함수 프로바이더 선언으로 변환합니다. */
     private fun parseFunction(
         filePath: String,
         content: String,
@@ -157,6 +161,7 @@ object RiverpodAnnotationParser {
         )
     }
 
+    /** 선언 시작 위치부터 탐색해 함수 이름, 반환 타입, 파라미터 범위를 찾습니다. */
     private fun findFunctionSignature(content: String, codeMask: BooleanArray, start: Int): FunctionSignature? {
         var index = start
         while (index < content.length) {
@@ -181,6 +186,7 @@ object RiverpodAnnotationParser {
         return null
     }
 
+    /** 파라미터 시작 괄호 앞의 토큰들이 유효한 함수 선언인지 확인해 시그니처로 만듭니다. */
     private fun functionCandidateAt(
         content: String,
         codeMask: BooleanArray,
@@ -217,6 +223,7 @@ object RiverpodAnnotationParser {
         )
     }
 
+    /** Riverpod 어노테이션 뒤에 이어지는 추가 Dart 메타데이터를 건너뜁니다. */
     private fun skipMetadata(content: String, codeMask: BooleanArray, start: Int): Int {
         var index = skipIgnorable(content, codeMask, start)
         while (index < content.length && content[index] == '@' && codeMask[index]) {
@@ -232,6 +239,7 @@ object RiverpodAnnotationParser {
         return index
     }
 
+    /** 어노테이션 이름과 점으로 연결된 식별자 구간을 지나 다음 위치를 반환합니다. */
     private fun skipAnnotationName(content: String, codeMask: BooleanArray, start: Int): Int {
         var index = start
         while (index < content.length && codeMask[index] && (isIdentifierPart(content[index]) || content[index] == '.')) {
@@ -240,6 +248,7 @@ object RiverpodAnnotationParser {
         return index
     }
 
+    /** 현재 줄에서 공백과 탭만 건너뛴 다음 위치를 반환합니다. */
     private fun skipInlineWhitespace(content: String, start: Int): Int {
         var index = start
         while (index < content.length && (content[index] == ' ' || content[index] == '\t')) {
@@ -248,6 +257,7 @@ object RiverpodAnnotationParser {
         return index
     }
 
+    /** 뒤쪽으로 이동하며 공백과 코드가 아닌 문자를 건너뛰고 이전 코드 위치를 찾습니다. */
     private fun skipIgnorableBack(content: String, codeMask: BooleanArray, start: Int): Int {
         var index = start
         while (index >= 0 && (content[index].isWhitespace() || !codeMask[index])) {
@@ -256,6 +266,7 @@ object RiverpodAnnotationParser {
         return index
     }
 
+    /** 식별자 끝 위치에서 거꾸로 이동해 식별자의 시작 위치를 찾습니다. */
     private fun identifierStart(content: String, codeMask: BooleanArray, end: Int): Int {
         var index = end
         while (index >= 0 && codeMask[index] && isIdentifierPart(content[index])) {
@@ -264,6 +275,7 @@ object RiverpodAnnotationParser {
         return index + 1
     }
 
+    /** 코드 영역 안에서 다른 식별자의 일부가 아닌 지정 토큰의 위치를 찾습니다. */
     private fun findIdentifier(
         content: String,
         codeMask: BooleanArray,
@@ -286,6 +298,7 @@ object RiverpodAnnotationParser {
         return null
     }
 
+    /** 반환 타입 추출을 위해 선언 앞쪽의 가장 가까운 시그니처 경계를 찾습니다. */
     private fun previousSignatureBoundary(content: String, codeMask: BooleanArray, min: Int, end: Int): Int {
         var index = end
         while (index > min) {
@@ -301,6 +314,7 @@ object RiverpodAnnotationParser {
         return min
     }
 
+    /** 클래스 본문 기준 최상위 멤버 깊이에서 발견된 위치인지 확인합니다. */
     private fun isAtMemberDepthZero(content: String, codeMask: BooleanArray, start: Int, end: Int): Boolean {
         var braceDepth = 0
         var index = start
@@ -317,6 +331,7 @@ object RiverpodAnnotationParser {
         return braceDepth == 0
     }
 
+    /** 지정 범위의 코드 영역에 특정 문자가 포함되어 있는지 확인합니다. */
     private fun containsCodeChar(
         content: String,
         codeMask: BooleanArray,
@@ -326,25 +341,31 @@ object RiverpodAnnotationParser {
     ): Boolean =
         (start until end).any { codeMask[it] && content[it] == char }
 
+    /** 지정 범위의 코드 영역에 Dart 화살표 함수 기호가 있는지 확인합니다. */
     private fun containsCodeArrow(content: String, codeMask: BooleanArray, start: Int, end: Int): Boolean =
         (start until (end - 1)).any { codeMask[it] && codeMask[it + 1] && content[it] == '=' && content[it + 1] == '>' }
 
+    /** 원본 오프셋 범위를 유지한 채 해당 구간의 코드 문자만 남깁니다. */
     private fun codeSlice(content: String, codeMask: BooleanArray, start: Int, end: Int): String =
         codeOnly(content.substring(start, end), codeMask.sliceArray(start until end))
 
+    /** 타입 문자열에서 어노테이션과 중복 공백을 제거해 비교 가능한 형태로 정리합니다. */
     private fun cleanType(type: String): String =
         type.trim()
             .replace(annotationInTypeRegex, " ")
             .replace(whitespaceRegex, " ")
             .trim()
 
+    /** 파라미터 시그니처의 앞뒤 공백과 연속 공백을 정리합니다. */
     private fun cleanSignature(signature: String): String =
         signature.trim()
             .replace(whitespaceRegex, " ")
 
+    /** 원본 오프셋이 속한 1부터 시작하는 줄 번호를 계산합니다. */
     private fun lineOf(content: String, offset: Int): Int =
         content.substring(0, offset).count { it == '\n' } + 1
 
+    /** Dart 식별자에 사용할 수 있는 문자 범위인지 확인합니다. */
     private fun isIdentifierPart(char: Char): Boolean =
         char == '_' || char == '$' || char.isLetterOrDigit()
 

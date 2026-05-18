@@ -79,6 +79,7 @@ object ProviderDependencyAnalyzer {
         }
     }
 
+    /** 선언 종류에 맞춰 프로바이더 본문을 스캔할 텍스트 범위를 계산합니다. */
     private fun providerRange(
         content: String,
         codeMask: BooleanArray,
@@ -93,6 +94,7 @@ object ProviderDependencyAnalyzer {
         return start until end.coerceAtLeast(start + 1).coerceAtMost(content.length)
     }
 
+    /** 함수형 프로바이더 선언의 매개변수 뒤에서 본문이나 표현식의 끝 위치를 찾습니다. */
     private fun functionEnd(
         content: String,
         codeMask: BooleanArray,
@@ -127,11 +129,13 @@ object ProviderDependencyAnalyzer {
         return null
     }
 
+    /** 클래스형 프로바이더 선언의 본문 블록 끝 다음 위치를 찾습니다. */
     private fun classEnd(content: String, codeMask: BooleanArray, start: Int): Int? {
         val bodyStart = findNextCodeChar(content, codeMask, '{', start) ?: return null
         return findMatchingPair(content, codeMask, bodyStart, '{', '}')?.plus(1)
     }
 
+    /** 표현식 본문이나 문장의 세미콜론 다음 위치를 반환합니다. */
     private fun statementEnd(content: String, codeMask: BooleanArray, start: Int): Int {
         var index = start
         while (index < content.length) {
@@ -144,6 +148,7 @@ object ProviderDependencyAnalyzer {
         return content.length
     }
 
+    /** 의존성 그래프에서 [start]가 [target]까지 도달 가능한지 깊이 우선으로 확인합니다. */
     private fun canReach(
         adjacency: Map<String, List<String>>,
         start: String,

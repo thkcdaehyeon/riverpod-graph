@@ -73,6 +73,7 @@ object RefExtensionScanner {
             .distinctBy { Triple(it.memberId, it.filePath, it.textOffset) }
     }
 
+    /** 확장 본문을 멤버 단위로 나누고 각 멤버의 프로바이더 의존성을 수집합니다. */
     private fun memberDependencies(
         filePath: String,
         code: String,
@@ -167,6 +168,7 @@ object RefExtensionScanner {
         return dependencies
     }
 
+    /** 멤버 표현식 범위에서 발견한 프로바이더 참조로 Ref 확장 의존성 모델을 만듭니다. */
     private fun dependency(
         filePath: String,
         code: String,
@@ -198,6 +200,7 @@ object RefExtensionScanner {
         )
     }
 
+    /** 확장 멤버 선언부에서 getter 또는 메서드 이름과 오프셋을 추출합니다. */
     private fun memberName(code: String, segmentStart: Int, memberBodyStart: Int): MemberName? {
         val prefix = code.substring(segmentStart, memberBodyStart)
         val getterMatch = getterNameRegex.find(prefix)
@@ -217,6 +220,7 @@ object RefExtensionScanner {
         )
     }
 
+    /** 표현식 범위 안에서 ref/this 또는 암시적 Ref 호출로 참조된 프로바이더를 찾습니다. */
     private fun providerMatchesInExpression(
         code: String,
         expressionStart: Int,
@@ -256,6 +260,7 @@ object RefExtensionScanner {
             .distinct()
     }
 
+    /** 지정한 정규식으로 표현식 범위 안의 프로바이더 이름과 오프셋을 수집합니다. */
     private fun providerMatches(
         code: String,
         expressionStart: Int,
@@ -279,6 +284,7 @@ object RefExtensionScanner {
             }
             .toList()
 
+    /** 암시적 호출 후보 앞에 공백을 사이에 둔 멤버 접근 점이 있는지 확인합니다. */
     private fun hasSpacedMemberAccessBefore(code: String, expressionStart: Int, matchStart: Int): Boolean {
         var index = matchStart - 1
         while (index >= expressionStart && code[index].isWhitespace()) {
@@ -287,6 +293,7 @@ object RefExtensionScanner {
         return index >= expressionStart && code[index] == '.'
     }
 
+    /** 괄호와 중괄호 깊이를 고려해 현재 표현식 문장의 끝 세미콜론을 찾습니다. */
     private fun statementEnd(
         code: String,
         codeMask: BooleanArray,
@@ -321,18 +328,21 @@ object RefExtensionScanner {
         return limit
     }
 
+    /** 확장 수신자 타입의 불필요한 공백을 제거해 비교 가능한 형태로 정규화합니다. */
     private fun normalizeReceiverType(receiverType: String): String =
         receiverType
             .replace(Regex("""\s*\.\s*"""), ".")
             .replace(Regex("""\s+\?"""), "?")
             .trim()
 
+    /** 확장 이름이 없을 때 수신자 타입에서 멤버 ID 접두사를 만듭니다. */
     private fun String.memberIdPrefix(): String =
         removeSuffix("?")
             .substringBefore("<")
             .trim()
             .substringAfterLast(".")
 
+    /** 확장 수신자 타입이 Ref 계열인지 확인합니다. */
     private fun isRefReceiver(receiverType: String): Boolean {
         val baseName = receiverType
             .removeSuffix("?")
@@ -342,6 +352,7 @@ object RefExtensionScanner {
         return baseName == "Ref" || baseName.endsWith("Ref")
     }
 
+    /** 현재 스캔 위치가 괄호, 대괄호, 중괄호 안쪽이 아닌 최상위인지 판단합니다. */
     private fun isTopLevel(parenDepth: Int, bracketDepth: Int, braceDepth: Int): Boolean =
         parenDepth == 0 && bracketDepth == 0 && braceDepth == 0
 

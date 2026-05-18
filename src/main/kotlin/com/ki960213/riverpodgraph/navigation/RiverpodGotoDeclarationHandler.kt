@@ -46,6 +46,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         return targets.takeIf { it.isNotEmpty() }?.toTypedArray()
     }
 
+    /** 현재 파일 텍스트를 직접 파싱해 심볼과 일치하는 선언 대상을 찾습니다. */
     private fun resolveInContainingFileText(element: PsiElement, symbol: String): List<PsiElement> {
         val file = element.containingFile ?: return emptyList()
         val filePath = file.virtualFile?.path ?: file.name
@@ -56,6 +57,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         }
     }
 
+    /** 선언 오프셋에서 이동 가능한 PSI 요소를 만들거나 기존 요소를 반환합니다. */
     private fun targetElement(file: PsiFile, declaration: RiverpodProviderDeclaration): PsiElement {
         val target = file.findElementAt(declaration.textOffset)
         if (target?.text == declaration.sourceName) {
@@ -65,11 +67,13 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         return TextOffsetPsiElement(file, declaration.sourceName, declaration.textOffset)
     }
 
+    /** 파일 이름을 기준으로 Dart 파일인지 확인합니다. */
     private fun isDartFile(file: PsiFile): Boolean {
         val fileName = file.virtualFile?.name ?: file.name
         return fileName.endsWith(".dart")
     }
 
+    /** 인덱스가 아직 준비되지 않은 경우 실패 대신 null을 반환합니다. */
     private fun <T> withAvailableIndex(action: () -> T): T? {
         return try {
             action()
@@ -82,9 +86,11 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         }
     }
 
+    /** 심볼이 생성된 Riverpod 프로바이더 이름 형태인지 확인합니다. */
     private fun isGeneratedRiverpodSymbol(symbol: String): Boolean =
         symbol.endsWith("Provider") || symbol.startsWith("_$")
 
+    /** PSI 요소와 부모 요소에서 오프셋에 해당하는 Riverpod 심볼을 찾습니다. */
     private fun symbolAt(element: PsiElement, offset: Int): String? {
         val lookupOffset = when {
             element.textRange.containsOffset(offset - 1) -> offset - 1
@@ -96,6 +102,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
             .filterNotNull().firstNotNullOfOrNull { candidate -> identifierAt(candidate, lookupOffset) }
     }
 
+    /** 요소 텍스트 안에서 오프셋에 걸친 식별자 또는 접근 체인의 기본 심볼을 찾습니다. */
     private fun identifierAt(element: PsiElement, offset: Int): String? {
         val textRange = element.textRange
         if (!textRange.containsOffset(offset)) {
@@ -122,6 +129,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         return providerBaseBeforeModifier(text, identifiers, identifierIndex)
     }
 
+    /** 접근 수정자 앞에 있는 생성된 프로바이더 심볼을 거슬러 찾습니다. */
     private fun providerBaseBeforeModifier(
         text: String,
         identifiers: List<MatchResult>,
@@ -202,6 +210,7 @@ private data class TargetLocation(
     val textOffset: Int,
 )
 
+/** 중복 이동 대상을 제거하기 위해 PSI 요소의 위치 키를 만듭니다. */
 private fun targetLocation(target: PsiElement): TargetLocation =
     TargetLocation(
         filePath = target.containingFile?.virtualFile?.path ?: target.containingFile?.name,

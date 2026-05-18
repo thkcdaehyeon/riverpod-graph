@@ -78,10 +78,12 @@ internal fun dartStringEnd(content: String, start: Int): Int =
         .let { literal -> content.stringTerminatorCandidates(literal).firstOrNull() }
         ?: content.length
 
+/** Dart 코드 분석에서 제외해야 할 주석과 문자열 범위들을 순서대로 생성한다. */
 private fun String.ignoredDartRanges(): Sequence<IntRange> =
     generateSequence(nextIgnoredRangeScan(from = 0)) { previous -> nextIgnoredRangeScan(from = previous.nextIndex) }
         .map { scan -> scan.range }
 
+/** 지정 위치부터 다음 제외 범위를 찾아 다음 탐색 시작점과 함께 반환한다. */
 private tailrec fun String.nextIgnoredRangeScan(from: Int): IgnoredRangeScan? =
     when {
         from >= length -> null
@@ -91,12 +93,15 @@ private tailrec fun String.nextIgnoredRangeScan(from: Int): IgnoredRangeScan? =
         }
     }
 
+/** 현재 인덱스에서 시작하는 제외 범위가 있는지 규칙 목록으로 판정한다. */
 private fun String.ignoredDartRangeAt(index: Int): IntRange? =
     ignoredRangeRules.firstNotNullOfOrNull { rule -> rule.rangeAt(this, index) }
 
+/** 한 줄 주석이 끝나는 줄바꿈 위치나 파일 끝 위치를 반환한다. */
 private fun String.lineCommentEnd(start: Int): Int =
     indexOf('\n', start + 2).takeIf { it != -1 } ?: length
 
+/** 블록 주석 내부의 시작/종료 delimiter를 중첩 계산 순서대로 생성한다. */
 private fun String.blockCommentDelimiters(start: Int): Sequence<BlockCommentDelimiter> = sequence {
     var index = start
     while (index < length) {
@@ -113,24 +118,29 @@ private fun String.blockCommentDelimiters(start: Int): Sequence<BlockCommentDeli
     }
 }
 
+/** 문자열 본문을 훑으며 리터럴 종료 후보 위치들을 생성한다. */
 private fun String.stringTerminatorCandidates(literal: DartStringLiteral): Sequence<Int> =
     generateSequence(literal.bodyStart) { index -> literal.nextScanIndex(this, index) }
         .takeWhile { index -> index < length }
         .mapNotNull { index -> literal.terminatorEndAt(this, index) }
 
+/** 지정 위치부터 코드로 마스킹된 문자 인덱스만 순서대로 제공한다. */
 private fun String.codeIndexes(codeMask: BooleanArray, start: Int): Sequence<Int> =
     (start.coerceAtLeast(0) until length).asSequence()
         .filter { index -> codeMask[index] }
 
+/** 제외 범위에 해당하는 마스크 값을 false로 표시한다. */
 private fun BooleanArray.markIgnored(range: IntRange) {
     (range.first..range.last.coerceAtMost(lastIndex)).forEach { index ->
         this[index] = false
     }
 }
 
+/** 문자가 Dart 문자열을 시작할 수 있는 따옴표인지 확인한다. */
 private fun Char.isDartQuote(): Boolean =
     this == '\'' || this == '"'
 
+/** raw 문자열 접두사 판별에 쓰이는 Dart 식별자 문자인지 확인한다. */
 private fun isIdentifierPart(char: Char): Boolean =
     char == '_' || char == '$' || char.isLetterOrDigit()
 
@@ -203,9 +213,11 @@ private data class DartStringLiteral(
     fun terminatorEndAt(content: String, index: Int): Int? =
         (index + terminatorLength).takeIf { isTerminatorAt(content, index) }
 
+    /** 현재 위치가 이스케이프 시퀀스의 시작인지 확인한다. */
     private fun isEscapedAt(content: String, index: Int): Boolean =
         !raw && content[index] == '\\'
 
+    /** 현재 위치에서 리터럴 종료 delimiter가 시작되는지 확인한다. */
     private fun isTerminatorAt(content: String, index: Int): Boolean =
         when {
             triple -> content.startsWith(delimiter, index)

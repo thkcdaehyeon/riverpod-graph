@@ -79,6 +79,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         e.presentation.isVisible = relevant
     }
 
+    /** 현재 액션 컨텍스트에서 선택된 프로바이더 선언을 찾습니다. */
     private fun declarationFromContext(e: AnActionEvent): RiverpodProviderDeclaration? {
         val project = e.project ?: return null
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return null
@@ -90,6 +91,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
             .firstNotNullOfOrNull { symbol -> withAvailableIndex { resolver.findDeclaration(symbol) } }
     }
 
+    /** 도구 창의 그래프 패널에 프로바이더 의존성 그래프를 표시합니다. */
     private fun showGraph(
         project: Project,
         providerName: String,
@@ -105,6 +107,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         }
     }
 
+    /** 선택된 선언을 포함해 프로젝트 소스에서 프로바이더 의존성 간선을 계산합니다. */
     private fun dependencyEdges(
         project: Project,
         file: PsiFile,
@@ -122,6 +125,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         providerGraphEdgesForSourceFiles(sourceFiles, declarations)
     }
 
+    /** 파일 기반 인덱스에서 프로젝트의 모든 프로바이더 선언을 읽습니다. */
     private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
         val index = FileBasedIndex.getInstance()
         val scope = GlobalSearchScope.projectScope(project)
@@ -131,6 +135,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         return providerDeclarationsFromIndexValues(values)
     }
 
+    /** 현재 목록에 선택된 선언이 없을 때만 추가합니다. */
     private fun List<RiverpodProviderDeclaration>.withDeclaration(
         declaration: RiverpodProviderDeclaration,
     ): List<RiverpodProviderDeclaration> {
@@ -142,6 +147,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         return this + declaration
     }
 
+    /** 그래프 분석에 필요한 프로바이더 소스 파일과 내용을 수집합니다. */
     private fun providerSourceFilesInReadAction(
         project: Project,
         invocationFile: PsiFile,
@@ -164,6 +170,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         }
     }
 
+    /** PSI 또는 VFS에서 가상 파일의 텍스트를 안전하게 읽습니다. */
     private fun sourceText(project: Project, virtualFile: VirtualFile): String? =
         try {
             PsiManager.getInstance(project).findFile(virtualFile)?.text ?: VfsUtil.loadText(virtualFile)
@@ -173,6 +180,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
             null
         }
 
+    /** 편집기 커서와 PSI 요소에서 프로바이더 심볼 후보를 모읍니다. */
     private fun symbolCandidates(
         file: PsiFile,
         editor: Editor?,
@@ -182,6 +190,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         element?.text?.takeIf { IDENTIFIER_REGEX.matches(it) }?.let(::add)
     }.distinct()
 
+    /** 지정한 오프셋 주변의 프로바이더 심볼 또는 접근 체인의 기본 심볼을 찾습니다. */
     private fun symbolAt(content: String, offset: Int): String? {
         val lookupOffset = offset.coerceIn(0, content.length)
         val span = symbolSpan(content, lookupOffset)
@@ -203,6 +212,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         return providerBaseBeforeModifier(localContent, identifiers, identifierIndex)
     }
 
+    /** 프로바이더 접근 체인으로 볼 수 있는 텍스트 범위를 계산합니다. */
     private fun symbolSpan(content: String, offset: Int): IntRange {
         var start = (offset - 1).coerceAtLeast(0)
         while (start > 0 && isProviderChainChar(content[start - 1])) {
@@ -217,6 +227,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         return start until end
     }
 
+    /** `future` 같은 접근 수정자 앞에 있는 기본 프로바이더 심볼을 찾습니다. */
     private fun providerBaseBeforeModifier(
         content: String,
         identifiers: List<MatchResult>,
@@ -240,6 +251,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         return null
     }
 
+    /** 인덱스가 아직 준비되지 않은 경우 실패 대신 null을 반환합니다. */
     private fun <T> withAvailableIndex(action: () -> T): T? {
         return try {
             action()

@@ -60,6 +60,7 @@ class ProvidersPanelTest : StringSpec({
 
 })
 
+/** ProvidersPanel 테스트에 사용할 프로바이더 선언 값을 생성합니다. */
 private fun declaration(
     providerName: String = "userProvider",
     returnType: String = "String",

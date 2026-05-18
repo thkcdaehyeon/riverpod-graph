@@ -27,6 +27,7 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
         )
     }
 
+    /** PSI 요소가 거터 마커를 붙일 Riverpod 어노테이션인지 판별합니다. */
     private fun isRiverpodAnnotationElement(element: PsiElement): Boolean {
         val text = element.text
         if (!isRiverpodAnnotationText(text)) return false
@@ -36,6 +37,7 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
         return true
     }
 
+    /** 텍스트가 지원하는 Riverpod 어노테이션 표기인지 확인합니다. */
     private fun isRiverpodAnnotationText(text: String): Boolean {
         if (text.length > MAX_ANNOTATION_TEXT_LENGTH || text.any { it == '\n' || it == '\r' }) return false
 
@@ -44,6 +46,7 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
                 (text.startsWith("@Riverpod(") && text.endsWith(")"))
     }
 
+    /** 요소가 주석이나 문자열 안에 있어 어노테이션으로 처리하면 안 되는지 확인합니다. */
     private fun isCommentOrString(element: PsiElement): Boolean {
         if (hasCommentOrStringToken(element)) return true
         if (hasCommentOrStringToken(element.parent)) return true
@@ -57,11 +60,13 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
                 parentText.startsWith("r\"")
     }
 
+    /** PSI 토큰 타입 이름으로 주석 또는 문자열 토큰 여부를 확인합니다. */
     private fun hasCommentOrStringToken(element: PsiElement?): Boolean {
         val tokenName = element?.node?.elementType?.toString()?.uppercase(Locale.US) ?: return false
         return tokenName.contains("COMMENT") || tokenName.contains("STRING")
     }
 
+    /** 부모 요소가 전체 어노테이션을 이미 포함하는 경우 중복 마커를 막습니다. */
     private fun hasCompleteAnnotationParent(element: PsiElement): Boolean {
         val parent = element.parent ?: return false
         if (parent.textRange.startOffset != element.textRange.startOffset) return false

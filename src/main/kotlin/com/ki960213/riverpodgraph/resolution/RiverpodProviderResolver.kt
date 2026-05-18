@@ -44,6 +44,7 @@ class RiverpodProviderResolver(private val project: Project) {
         findSourceElementsInReadAction(symbol, scope).firstOrNull()
     }
 
+    /** 읽기 액션 안에서 인덱스 값들을 프로바이더 선언으로 변환합니다. */
     private fun findDeclarationsInReadAction(
         symbol: String,
         scope: GlobalSearchScope,
@@ -51,6 +52,7 @@ class RiverpodProviderResolver(private val project: Project) {
         FileBasedIndex.getInstance().getValues(RIVERPOD_PROVIDER_INDEX_NAME, symbol, scope),
     )
 
+    /** 인덱싱된 선언 오프셋을 실제 PSI 원본 요소로 변환합니다. */
     private fun findSourceElementsInReadAction(
         symbol: String,
         scope: GlobalSearchScope,
@@ -70,5 +72,6 @@ class RiverpodProviderResolver(private val project: Project) {
         }
     }
 
+    /** 프로젝트에 묶인 취소 가능한 읽기 액션으로 작업을 실행합니다. */
     private fun <T> readAction(action: () -> T): T = smartCancellableReadAction(project, action)
 }

@@ -73,6 +73,7 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
         return rows
     }
 
+    /** 현재 트리 루트 아래에 렌더링된 의존성 행 문자열을 순서대로 수집합니다. */
     private fun collectDependencyRows(): List<String> {
         if (root.childCount == 0) {
             return emptyList()
@@ -84,6 +85,7 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
         }
     }
 
+    /** 의존성 간선을 트리 행에 표시할 텍스트로 변환합니다. */
     private fun edgeRow(edge: RiverpodDependencyEdge): String {
         val usageLabel = edge.usageKind.name.lowercase(Locale.US).replace('_', ' ')
         val markerSuffix = edge.marker?.let { " [${it.label}]" }.orEmpty()
@@ -152,9 +154,11 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
             return true
         }
 
+        /** 컨테이너의 자식 컴포넌트에서 대상 그래프 패널을 포함한 탭 패널을 찾습니다. */
         private fun findInChildren(component: Container, target: DependencyGraphPanel): JTabbedPane? =
             component.components.firstNotNullOfOrNull { child -> findTabbedPaneContaining(child, target) }
 
+        /** 컴포넌트 하위 트리에 대상 컴포넌트가 포함되어 있는지 재귀적으로 확인합니다. */
         private fun componentContains(component: Component, target: Component): Boolean {
             if (component === target) {
                 return true

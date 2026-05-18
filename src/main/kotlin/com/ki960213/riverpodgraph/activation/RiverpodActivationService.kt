@@ -38,12 +38,14 @@ class RiverpodActivationService(private val project: Project) {
         isModuleActiveInReadAction(module)
     }
 
+    /** 읽기 액션 안에서 모듈 콘텐츠 루트의 pubspec을 검사해 Riverpod 활성 여부를 판단합니다. */
     private fun isModuleActiveInReadAction(module: Module): Boolean =
         ModuleRootManager.getInstance(module).contentRoots.any { root ->
             val pubspec = root.findChild("pubspec.yaml") ?: return@any false
             hasRiverpodAnnotation(pubspec)
         }
 
+    /** pubspec 파일 내용을 읽어 riverpod_annotation 의존성이 선언되어 있는지 확인합니다. */
     private fun hasRiverpodAnnotation(pubspec: VirtualFile): Boolean {
         return try {
             PubspecDependencyParser.hasRiverpodAnnotation(VfsUtil.loadText(pubspec))
@@ -59,6 +61,7 @@ class RiverpodActivationService(private val project: Project) {
         /** 프로젝트의 Riverpod 활성화 서비스를 반환합니다. */
         fun getInstance(project: Project): RiverpodActivationService = project.service()
 
+        /** 취소 가능한 읽기 액션으로 Riverpod 활성화 검사를 실행합니다. */
         private fun <T> readAction(action: () -> T): T = cancellableReadAction(action)
     }
 }
