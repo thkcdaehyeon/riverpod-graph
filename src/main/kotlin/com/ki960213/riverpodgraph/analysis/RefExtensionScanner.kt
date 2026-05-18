@@ -1,5 +1,9 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.ki960213.riverpodgraph.dart.codeOnly
+import com.ki960213.riverpodgraph.dart.dartCodeMask
+import com.ki960213.riverpodgraph.dart.findMatchingPair
+
 /**
  * Riverpod Ref 확장 멤버가 읽는 프로바이더를 설명합니다.
  */
@@ -223,18 +227,18 @@ object RefExtensionScanner {
 
         for (providerName in providerNames) {
             val explicitReceiverRegex = Regex(
-                """(?<![._${'$'}A-Za-z0-9])(?:ref|this)\s*\.\s*(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*${
+                $$"""(?<![._$A-Za-z0-9])(?:ref|this)\s*\.\s*(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*$${
                     Regex.escape(
                         providerName
                     )
-                }(?![_${'$'}A-Za-z0-9])""",
+                }(?![_$A-Za-z0-9])""",
             )
             val bareCallRegex = Regex(
-                """(?<![._${'$'}A-Za-z0-9])(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*${
+                $$"""(?<![._$A-Za-z0-9])(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*$${
                     Regex.escape(
                         providerName
                     )
-                }(?![_${'$'}A-Za-z0-9])""",
+                }(?![_$A-Za-z0-9])""",
             )
             matches += providerMatches(code, expressionStart, expressionEnd, providerName, explicitReceiverRegex)
             matches += providerMatches(
@@ -317,35 +321,6 @@ object RefExtensionScanner {
         return limit
     }
 
-    private fun findMatchingPair(
-        code: String,
-        codeMask: BooleanArray,
-        start: Int,
-        open: Char,
-        close: Char,
-    ): Int? {
-        var depth = 0
-        var index = start
-        while (index < code.length) {
-            if (!codeMask[index]) {
-                index++
-                continue
-            }
-
-            if (code[index] == open) {
-                depth++
-            } else if (code[index] == close) {
-                depth--
-                if (depth == 0) {
-                    return index
-                }
-            }
-            index++
-        }
-
-        return null
-    }
-
     private fun normalizeReceiverType(receiverType: String): String =
         receiverType
             .replace(Regex("""\s*\.\s*"""), ".")
@@ -370,101 +345,6 @@ object RefExtensionScanner {
     private fun isTopLevel(parenDepth: Int, bracketDepth: Int, braceDepth: Int): Boolean =
         parenDepth == 0 && bracketDepth == 0 && braceDepth == 0
 
-    private fun dartCodeMask(content: String): BooleanArray {
-        val codeMask = BooleanArray(content.length) { true }
-        var index = 0
-        while (index < content.length) {
-            when {
-                content.startsWith("//", index) -> {
-                    val end = content.indexOf('\n', index + 2).takeIf { it != -1 } ?: content.length
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content.startsWith("/*", index) -> {
-                    val end = blockCommentEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content[index] == '\'' || content[index] == '"' -> {
-                    val end = stringEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                else -> index++
-            }
-        }
-
-        return codeMask
-    }
-
-    private fun blockCommentEnd(content: String, start: Int): Int {
-        var depth = 0
-        var index = start
-        while (index < content.length) {
-            when {
-                content.startsWith("/*", index) -> {
-                    depth++
-                    index += 2
-                }
-
-                content.startsWith("*/", index) -> {
-                    depth--
-                    index += 2
-                    if (depth == 0) {
-                        return index
-                    }
-                }
-
-                else -> index++
-            }
-        }
-
-        return content.length
-    }
-
-    private fun stringEnd(content: String, start: Int): Int {
-        val quote = content[start]
-        val triple = content.startsWith("$quote$quote$quote", start)
-        val raw = start > 0 &&
-                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-                (start == 1 || !isIdentifierPart(content[start - 2]))
-        var index = start + if (triple) 3 else 1
-
-        while (index < content.length) {
-            if (!raw && content[index] == '\\') {
-                index += 2
-                continue
-            }
-            if (triple && content.startsWith("$quote$quote$quote", index)) {
-                return index + 3
-            }
-            if (!triple && content[index] == quote) {
-                return index + 1
-            }
-            index++
-        }
-
-        return content.length
-    }
-
-    private fun codeOnly(content: String, codeMask: BooleanArray): String = buildString(content.length) {
-        for (index in content.indices) {
-            append(if (codeMask[index]) content[index] else ' ')
-        }
-    }
-
-    private fun BooleanArray.markIgnored(start: Int, end: Int) {
-        for (index in start until end.coerceAtMost(size)) {
-            this[index] = false
-        }
-    }
-
-    private fun isIdentifierPart(char: Char): Boolean =
-        char == '_' || char == '$' || char.isLetterOrDigit()
-
     private data class MemberName(
         val name: String,
         val offset: Int,
@@ -476,10 +356,10 @@ object RefExtensionScanner {
     )
 
     private val extensionRegex = Regex(
-        """\bextension(?:\s+([_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*)(?:\s*<[^{};]*>)?|\s*<[^{};]*>)?\s+on\s+((?:[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*\s*\.\s*)*[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*(?:\s*<[^{};]*>)?\s*\??)\s*\{""",
+        $$"""\bextension(?:\s+([_$A-Za-z][_$A-Za-z0-9]*)(?:\s*<[^{};]*>)?|\s*<[^{};]*>)?\s+on\s+((?:[_$A-Za-z][_$A-Za-z0-9]*\s*\.\s*)*[_$A-Za-z][_$A-Za-z0-9]*(?:\s*<[^{};]*>)?\s*\??)\s*\{""",
     )
-    private val getterNameRegex = Regex("""\bget\s+([_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*)\s*$""")
+    private val getterNameRegex = Regex($$"""\bget\s+([_$A-Za-z][_$A-Za-z0-9]*)\s*$""")
     private val methodNameRegex = Regex(
-        """([_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*)\s*(?:<[^(){};]*>\s*)?\([^{};]*\)\s*(?:async\*?|sync\*)?\s*$""",
+        $$"""([_$A-Za-z][_$A-Za-z0-9]*)\s*(?:<[^(){};]*>\s*)?\([^{};]*\)\s*(?:async\*?|sync\*)?\s*$""",
     )
 }

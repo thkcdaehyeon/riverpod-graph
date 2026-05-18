@@ -14,7 +14,7 @@ class RiverpodProviderIndexValueTest : StringSpec({
             kind = RiverpodProviderKind.NOTIFIER_CLASS,
             sourceName = "UserController",
             providerName = "userControllerProvider",
-            generatedSuperclassName = "_${'$'}UserController",
+            generatedSuperclassName = $$"_$UserController",
             returnType = "User",
             familySignature = "String id",
             keepAlive = true,

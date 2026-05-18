@@ -1,6 +1,6 @@
 package com.ki960213.riverpodgraph.analysis
 
-import com.ki960213.riverpodgraph.actions.ShowWidgetDependenciesAction
+import com.ki960213.riverpodgraph.actions.fallbackProviderNames
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
@@ -26,7 +26,6 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             filePath = "lib/home.dart",
             content = content,
             providerNames = setOf("userProvider"),
-            depthLimit = 5,
         )
 
         (result.providerNames) shouldBe listOf("userProvider")
@@ -57,7 +56,6 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             filePath = "lib/home.dart",
             content = content,
             providerNames = setOf("firstProvider", "secondProvider"),
-            depthLimit = 5,
             caretOffset = content.indexOf("SecondPanel"),
         )
 
@@ -99,7 +97,6 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             providerNames = setOf("currentUserProvider", "userProvider"),
             declarations = listOf(declaration),
             extensionDependencies = extensionDependencies,
-            depthLimit = 5,
         )
 
         (result.providerNames) shouldBe listOf("currentUserProvider", "userProvider")
@@ -131,7 +128,6 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             content = content,
             providerNames = setOf("userProvider"),
             extensionDependencies = extensionDependencies,
-            depthLimit = 5,
         )
 
         (result.providerNames) shouldBe listOf("userProvider")
@@ -159,7 +155,6 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             filePath = "lib/home.dart",
             content = content,
             providerNames = emptySet(),
-            depthLimit = 5,
         )
 
         (result.childWidgets.map { it.name }) shouldBe listOf(
@@ -192,7 +187,6 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             filePath = "lib/home.dart",
             content = content,
             providerNames = emptySet(),
-            depthLimit = 10,
         )
 
         (result.childWidgets.map { it.name }) shouldBe listOf(
@@ -229,7 +223,6 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             filePath = "lib/home.dart",
             content = content,
             providerNames = emptySet(),
-            depthLimit = 10,
         )
 
         (result.childWidgets.map { it.name }) shouldBe listOf("UserTile")
@@ -242,7 +235,7 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             final user = ref.watch(realProvider);
         """.trimIndent()
 
-        (ShowWidgetDependenciesAction.fallbackProviderNames(content)) shouldBe setOf("realProvider")
+        (fallbackProviderNames(content)) shouldBe setOf("realProvider")
     }
 
 })

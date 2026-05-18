@@ -104,3 +104,18 @@ data class RiverpodProviderIndexValue(
         }
     }
 }
+
+/** 인덱스 값을 표시와 해석에 안정적인 순서의 고유 프로바이더 선언으로 변환합니다. */
+internal fun providerDeclarationsFromIndexValues(
+    values: Collection<RiverpodProviderIndexValue>,
+): List<RiverpodProviderDeclaration> = values
+    .map { it.toDeclaration() }
+    .sortedWith(
+        compareBy<RiverpodProviderDeclaration> { it.filePath }
+            .thenBy { it.textOffset }
+            .thenBy { it.sourceName }
+            .thenBy { it.providerName },
+    )
+    .distinctBy { declaration ->
+        Triple(declaration.providerName, declaration.filePath, declaration.textOffset)
+    }

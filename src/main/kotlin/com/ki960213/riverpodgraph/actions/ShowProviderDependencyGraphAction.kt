@@ -23,7 +23,7 @@ import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzer
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
@@ -130,20 +130,6 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
         return providerDeclarationsFromIndexValues(values)
     }
-
-    private fun providerDeclarationsFromIndexValues(
-        values: Collection<RiverpodProviderIndexValue>,
-    ): List<RiverpodProviderDeclaration> = values
-        .map { it.toDeclaration() }
-        .sortedWith(
-            compareBy<RiverpodProviderDeclaration> { it.filePath }
-                .thenBy { it.textOffset }
-                .thenBy { it.sourceName }
-                .thenBy { it.providerName },
-        )
-        .distinctBy { declaration ->
-            Triple(declaration.providerName, declaration.filePath, declaration.textOffset)
-        }
 
     private fun List<RiverpodProviderDeclaration>.withDeclaration(
         declaration: RiverpodProviderDeclaration,
@@ -297,11 +283,11 @@ internal fun providerGraphEdgesForSourceFiles(
 }
 
 /** 프로바이더 접근 체인을 스캔할 때 Dart 식별자를 찾습니다. */
-val IDENTIFIER_REGEX = Regex($$"""[_$A-Za-z][_$A-Za-z0-9]*""")
+internal val IDENTIFIER_REGEX = Regex($$"""[_$A-Za-z][_$A-Za-z0-9]*""")
 
 /** 기본 프로바이더 심볼로 다시 해석되는 프로바이더 접근 수정자입니다. */
-val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
+internal val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
 
 /** 문자가 프로바이더 접근 체인 안에 나타날 수 있는지 반환합니다. */
-fun isProviderChainChar(char: Char): Boolean =
+internal fun isProviderChainChar(char: Char): Boolean =
     char == '.' || char == '_' || char == '$' || char.isLetterOrDigit() || char.isWhitespace()

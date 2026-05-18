@@ -1,5 +1,10 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.ki960213.riverpodgraph.dart.codeOnly
+import com.ki960213.riverpodgraph.dart.dartCodeMask
+import com.ki960213.riverpodgraph.dart.findMatchingPair
+import com.ki960213.riverpodgraph.dart.findNextCodeChar
+import com.ki960213.riverpodgraph.dart.skipIgnorable
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 
@@ -42,7 +47,6 @@ object WidgetDependencyAnalyzer {
         filePath: String,
         content: String,
         providerNames: Set<String>,
-        depthLimit: Int,
         caretOffset: Int? = null,
         declarations: List<RiverpodProviderDeclaration> = emptyList(),
         extensionDependencies: List<RefExtensionDependency> = emptyList(),
@@ -134,7 +138,7 @@ object WidgetDependencyAnalyzer {
         widgetName: String,
     ): IntRange? {
         val stateClassRegex = Regex(
-            """\bclass\s+[A-Za-z_${'$'}][A-Za-z0-9_${'$'}]*\s+extends\s+""" +
+            """\bclass\s+[A-Za-z_$][A-Za-z0-9_$]*\s+extends\s+""" +
                     """(?:ConsumerState|State|HookConsumerState)\s*<\s*${Regex.escape(widgetName)}\s*>""",
         )
         val stateMatch = stateClassRegex.find(code) ?: return null
@@ -227,133 +231,6 @@ object WidgetDependencyAnalyzer {
     private fun fallbackWidgetName(filePath: String): String =
         filePath.substringAfterLast('/').removeSuffix(".dart").ifBlank { "Widget" }
 
-    private fun dartCodeMask(content: String): BooleanArray {
-        val codeMask = BooleanArray(content.length) { true }
-        var index = 0
-        while (index < content.length) {
-            when {
-                content.startsWith("//", index) -> {
-                    val end = content.indexOf('\n', index + 2).takeIf { it != -1 } ?: content.length
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content.startsWith("/*", index) -> {
-                    val end = blockCommentEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content[index] == '\'' || content[index] == '"' -> {
-                    val end = stringEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                else -> index++
-            }
-        }
-
-        return codeMask
-    }
-
-    private fun blockCommentEnd(content: String, start: Int): Int {
-        var depth = 0
-        var index = start
-        while (index < content.length) {
-            when {
-                content.startsWith("/*", index) -> {
-                    depth++
-                    index += 2
-                }
-
-                content.startsWith("*/", index) -> {
-                    depth--
-                    index += 2
-                    if (depth == 0) {
-                        return index
-                    }
-                }
-
-                else -> index++
-            }
-        }
-
-        return content.length
-    }
-
-    private fun stringEnd(content: String, start: Int): Int {
-        val quote = content[start]
-        val triple = content.startsWith("$quote$quote$quote", start)
-        val raw = start > 0 &&
-                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-                (start == 1 || !isIdentifierPart(content[start - 2]))
-        var index = start + if (triple) 3 else 1
-
-        while (index < content.length) {
-            if (!raw && content[index] == '\\') {
-                index += 2
-                continue
-            }
-            if (triple && content.startsWith("$quote$quote$quote", index)) {
-                return index + 3
-            }
-            if (!triple && content[index] == quote) {
-                return index + 1
-            }
-            index++
-        }
-
-        return content.length
-    }
-
-    private fun findMatchingPair(
-        content: String,
-        codeMask: BooleanArray,
-        start: Int,
-        open: Char,
-        close: Char,
-    ): Int? {
-        var depth = 0
-        var index = start
-        while (index < content.length) {
-            if (!codeMask[index]) {
-                index++
-                continue
-            }
-
-            when (content[index]) {
-                open -> depth++
-                close -> {
-                    depth--
-                    if (depth == 0) {
-                        return index
-                    }
-                }
-            }
-            index++
-        }
-
-        return null
-    }
-
-    private fun findNextCodeChar(
-        content: String,
-        codeMask: BooleanArray,
-        char: Char,
-        start: Int,
-    ): Int? {
-        var index = start
-        while (index < content.length) {
-            if (codeMask[index] && content[index] == char) {
-                return index
-            }
-            index++
-        }
-
-        return null
-    }
-
     private fun statementEnd(content: String, codeMask: BooleanArray, start: Int): Int {
         var index = start
         while (index < content.length) {
@@ -365,40 +242,16 @@ object WidgetDependencyAnalyzer {
 
         return content.length
     }
-
-    private fun skipIgnorable(content: String, codeMask: BooleanArray, start: Int): Int {
-        var index = start
-        while (index < content.length && (!codeMask[index] || content[index].isWhitespace())) {
-            index++
-        }
-        return index
-    }
-
-    private fun codeOnly(content: String, codeMask: BooleanArray): String = buildString(content.length) {
-        for (index in content.indices) {
-            append(if (codeMask[index]) content[index] else ' ')
-        }
-    }
-
-    private fun BooleanArray.markIgnored(start: Int, end: Int) {
-        for (index in start until end.coerceAtMost(size)) {
-            this[index] = false
-        }
-    }
-
-    private fun isIdentifierPart(char: Char): Boolean =
-        char == '_' || char == '$' || char.isLetterOrDigit()
-
     private val widgetClassRegex = Regex(
-        """\bclass\s+([_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*)\s+extends\s+""" +
+        $$"""\bclass\s+([_$A-Za-z][_$A-Za-z0-9]*)\s+extends\s+""" +
                 """(ConsumerWidget|ConsumerStatefulWidget|HookConsumerWidget|StatefulHookConsumerWidget|""" +
                 """StatelessWidget|StatefulWidget)\b""",
     )
     private val buildMethodRegex = Regex("""\bWidget\s+build\s*\(""")
     private val constructorRegex =
-        Regex("""\b([A-Z][_${'$'}A-Za-z0-9]*)\s*(?:\.\s*[A-Za-z_][_${'$'}A-Za-z0-9]*)?\s*\(""")
-    private val loopRegex = Regex("""(?:\bfor\s*\(|\.(?:map|forEach)\s*(?:<[^(){};]*>)?\(|\bforEach\s*\()""")
-    private val callbackRegex = Regex("""(?:\b(?:builder|itemBuilder)\s*:|=>)""")
+        Regex($$"""\b([A-Z][_$A-Za-z0-9]*)\s*(?:\.\s*[A-Za-z_][_$A-Za-z0-9]*)?\s*\(""")
+    private val loopRegex = Regex("""\bfor\s*\(|\.(?:map|forEach)\s*(?:<[^(){};]*>)?\(|\bforEach\s*\(""")
+    private val callbackRegex = Regex("""\b(?:builder|itemBuilder)\s*:|=>""")
     private val conditionalRegex = Regex("""\bif\s*\(""")
     private val ternaryRegex = Regex("""\?[^?:]*$""")
     private val excludedConstructors = setOf(

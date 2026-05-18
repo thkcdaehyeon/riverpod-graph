@@ -42,9 +42,9 @@ class RiverpodAnnotationParserTest : StringSpec({
     }
 
     "keepAlive notifier 클래스 선언을 파싱한다" {
-        val content = """
+        val content = $$"""
             @Riverpod(keepAlive: true)
-            class SessionController extends _${'$'}SessionController {
+            class SessionController extends _$SessionController {
               @override
               Session build(String id) => Session(id);
             }
@@ -57,7 +57,7 @@ class RiverpodAnnotationParserTest : StringSpec({
         (declaration.kind) shouldBe RiverpodProviderKind.NOTIFIER_CLASS
         (declaration.sourceName) shouldBe "SessionController"
         (declaration.providerName) shouldBe "sessionControllerProvider"
-        (declaration.generatedSuperclassName) shouldBe "_${'$'}SessionController"
+        (declaration.generatedSuperclassName) shouldBe $$"_$SessionController"
         (declaration.returnType) shouldBe "Session"
         (declaration.familySignature) shouldBe "String id"
         (declaration.keepAlive) shouldBe true
@@ -68,11 +68,11 @@ class RiverpodAnnotationParserTest : StringSpec({
     }
 
     "주석과 문자열 안의 어노테이션은 무시한다" {
-        val content = """
+        val content = $$"""
             // @riverpod
             String commented(Ref ref) => 'not a provider';
 
-            final text = '@Riverpod(keepAlive: true) class Fake extends _${'$'}Fake { Fake build() => Fake(); }';
+            final text = '@Riverpod(keepAlive: true) class Fake extends _$Fake { Fake build() => Fake(); }';
 
             /*
             @riverpod
@@ -163,9 +163,9 @@ class RiverpodAnnotationParserTest : StringSpec({
     }
 
     "주석, 문자열, 중첩 중괄호를 무시하고 클래스 build 메서드를 찾는다" {
-        val content = """
+        val content = $$"""
             @Riverpod(keepAlive: true)
-            class SessionController extends _${'$'}SessionController {
+            class SessionController extends _$SessionController {
               // Session build() => Session('comment');
               final marker = 'build(ignored)';
 
@@ -192,9 +192,9 @@ class RiverpodAnnotationParserTest : StringSpec({
     }
 
     "클래스 build 메서드 앞의 멤버 build 호출은 무시한다" {
-        val content = """
+        val content = $$"""
             @riverpod
-            class SessionController extends _${'$'}SessionController {
+            class SessionController extends _$SessionController {
               final cached = helper.build();
 
               @override

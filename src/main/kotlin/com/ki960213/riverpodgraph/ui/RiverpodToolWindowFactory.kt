@@ -11,7 +11,7 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
@@ -72,18 +72,4 @@ internal fun loadProviders(project: Project): List<RiverpodProviderDeclaration> 
             .flatMap { key -> index.getValues(RIVERPOD_PROVIDER_INDEX_NAME, key, scope) }
 
         providerDeclarationsFromIndexValues(values)
-    }
-
-internal fun providerDeclarationsFromIndexValues(
-    values: Collection<RiverpodProviderIndexValue>,
-): List<RiverpodProviderDeclaration> = values
-    .map { it.toDeclaration() }
-    .sortedWith(
-        compareBy<RiverpodProviderDeclaration> { it.filePath }
-            .thenBy { it.textOffset }
-            .thenBy { it.sourceName }
-            .thenBy { it.providerName },
-    )
-    .distinctBy { declaration ->
-        Triple(declaration.providerName, declaration.filePath, declaration.textOffset)
     }

@@ -61,4 +61,4 @@ private fun RiverpodProviderDeclaration.toIndexValue(): RiverpodProviderIndexVal
 )
 
 /** Riverpod 프로바이더 선언을 위한 인덱스 식별자입니다. */
-val RIVERPOD_PROVIDER_INDEX_NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")
+internal val RIVERPOD_PROVIDER_INDEX_NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")

@@ -1,13 +1,14 @@
 package com.ki960213.riverpodgraph.resolution
 
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 
 class RiverpodProviderResolverTest : StringSpec({
     "중복 선언을 파일 경로와 오프셋 순으로 정렬한다" {
-        val sorted = sortProviderIndexValues(
+        val sorted = providerDeclarationsFromIndexValues(
             listOf(
                 value(sourceName = "ZUser", filePath = "lib/z_user.dart", textOffset = 3),
                 value(sourceName = "AUserLate", filePath = "lib/a_user.dart", textOffset = 42),

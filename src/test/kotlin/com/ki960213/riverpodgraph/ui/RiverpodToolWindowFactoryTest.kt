@@ -1,6 +1,7 @@
 package com.ki960213.riverpodgraph.ui
 
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

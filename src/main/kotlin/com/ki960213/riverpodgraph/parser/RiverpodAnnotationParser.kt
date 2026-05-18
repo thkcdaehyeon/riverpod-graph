@@ -1,5 +1,10 @@
 package com.ki960213.riverpodgraph.parser
 
+import com.ki960213.riverpodgraph.dart.codeOnly
+import com.ki960213.riverpodgraph.dart.dartCodeMask
+import com.ki960213.riverpodgraph.dart.findMatchingPair
+import com.ki960213.riverpodgraph.dart.findNextCodeChar
+import com.ki960213.riverpodgraph.dart.skipIgnorable
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFileName
 import com.ki960213.riverpodgraph.model.RiverpodNaming
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -188,7 +193,7 @@ object RiverpodAnnotationParser {
         }
 
         val nameStart = identifierStart(content, codeMask, nameEnd)
-        if (nameStart > nameEnd || nameStart < declarationStart) {
+        if (nameStart !in declarationStart..nameEnd) {
             return null
         }
 
@@ -238,14 +243,6 @@ object RiverpodAnnotationParser {
     private fun skipInlineWhitespace(content: String, start: Int): Int {
         var index = start
         while (index < content.length && (content[index] == ' ' || content[index] == '\t')) {
-            index++
-        }
-        return index
-    }
-
-    private fun skipIgnorable(content: String, codeMask: BooleanArray, start: Int): Int {
-        var index = start
-        while (index < content.length && (content[index].isWhitespace() || !codeMask[index])) {
             index++
         }
         return index
@@ -332,169 +329,8 @@ object RiverpodAnnotationParser {
     private fun containsCodeArrow(content: String, codeMask: BooleanArray, start: Int, end: Int): Boolean =
         (start until (end - 1)).any { codeMask[it] && codeMask[it + 1] && content[it] == '=' && content[it + 1] == '>' }
 
-    private fun findNextCodeChar(content: String, codeMask: BooleanArray, char: Char, start: Int): Int? {
-        var index = start
-        while (index < content.length) {
-            if (content[index] == char && codeMask[index]) {
-                return index
-            }
-            index++
-        }
-
-        return null
-    }
-
-    private fun findMatchingPair(
-        content: String,
-        codeMask: BooleanArray,
-        openIndex: Int,
-        open: Char,
-        close: Char,
-    ): Int? {
-        var depth = 0
-        var index = openIndex
-        while (index < content.length) {
-            if (!codeMask[index]) {
-                index++
-                continue
-            }
-
-            when (content[index]) {
-                open -> depth++
-                close -> {
-                    depth--
-                    if (depth == 0) {
-                        return index
-                    }
-                }
-            }
-            index++
-        }
-
-        return null
-    }
-
-    /**
-     * Dart 코드에서 주석과 문자열을 제외한 실제 코드 영역을 표시하는 불린 배열을 생성합니다.
-     * 
-     * @param content Dart 파일 내용
-     * @return 각 문자가 코드인지 여부를 나타내는 배열 (true = 코드, false = 주석/문자열)
-     */
-    private fun dartCodeMask(content: String): BooleanArray {
-        val codeMask = BooleanArray(content.length) { true }
-        var index = 0
-        while (index < content.length) {
-            when {
-                content.startsWith("//", index) -> {
-                    val end = content.indexOf('\n', index + 2).takeIf { it != -1 } ?: content.length
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content.startsWith("/*", index) -> {
-                    val end = blockCommentEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content[index] == '\'' || content[index] == '"' -> {
-                    val end = stringEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                else -> index++
-            }
-        }
-
-        return codeMask
-    }
-
-    /**
-     * 중첩된 블록 주석(/* */)의 끝 위치를 찾습니다.
-     * 
-     * @param content Dart 파일 내용
-     * @param start 블록 주석 시작 위치
-     * @return 블록 주석 종료 위치 (종료되지 않은 경우 파일 끝)
-     */
-    private fun blockCommentEnd(content: String, start: Int): Int {
-        var depth = 0
-        var index = start
-        while (index < content.length) {
-            when {
-                content.startsWith("/*", index) -> {
-                    depth++
-                    index += 2
-                }
-
-                content.startsWith("*/", index) -> {
-                    depth--
-                    index += 2
-                    if (depth == 0) {
-                        return index
-                    }
-                }
-
-                else -> index++
-            }
-        }
-
-        return content.length
-    }
-
-    /**
-     * 문자열 리터럴의 끝 위치를 찾습니다. 일반, raw, 삼중 따옴표 문자열을 모두 처리합니다.
-     * 
-     * @param content Dart 파일 내용
-     * @param start 문자열 시작 위치 (따옴표 위치)
-     * @return 문자열 종료 위치 (종료되지 않은 경우 파일 끝)
-     */
-    private fun stringEnd(content: String, start: Int): Int {
-        val quote = content[start]
-        val triple = content.startsWith("$quote$quote$quote", start)
-        val raw = start > 0 &&
-                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-                (start == 1 || !isIdentifierPart(content[start - 2]))
-        var index = start + if (triple) 3 else 1
-
-        while (index < content.length) {
-            if (!raw && content[index] == '\\') {
-                index += 2
-                continue
-            }
-
-            if (triple && content.startsWith("$quote$quote$quote", index)) {
-                return index + 3
-            }
-
-            if (!triple && content[index] == quote) {
-                return index + 1
-            }
-
-            index++
-        }
-
-        return content.length
-    }
-
-    /**
-     * 지정된 범위를 비코드 영역(주석 또는 문자열)으로 표시합니다.
-     * 
-     * @param start 비코드 영역 시작 인덱스
-     * @param end 비코드 영역 종료 인덱스
-     */
-    private fun BooleanArray.markIgnored(start: Int, end: Int) {
-        for (index in start until end.coerceAtMost(size)) {
-            this[index] = false
-        }
-    }
-
     private fun codeSlice(content: String, codeMask: BooleanArray, start: Int, end: Int): String =
-        buildString(end - start) {
-            for (index in start until end) {
-                append(if (codeMask[index]) content[index] else ' ')
-            }
-        }
+        codeOnly(content.substring(start, end), codeMask.sliceArray(start until end))
 
     private fun cleanType(type: String): String =
         type.trim()
@@ -530,7 +366,7 @@ object RiverpodAnnotationParser {
         val familySignature: String,
     )
 
-    private const val IDENTIFIER = "[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*"
+    private const val IDENTIFIER = $$"[_$A-Za-z][_$A-Za-z0-9]*"
 
     private val annotationRegex = Regex("""@(riverpod|Riverpod)\b""")
     private val keepAliveTrueRegex = Regex("""\bkeepAlive\s*:\s*true\b""")

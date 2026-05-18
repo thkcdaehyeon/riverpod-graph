@@ -17,9 +17,11 @@ import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzer
 import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
+import com.ki960213.riverpodgraph.dart.codeOnly
+import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
@@ -101,7 +103,6 @@ class ShowWidgetDependenciesAction : AnAction() {
             filePath = filePath,
             content = content,
             providerNames = providerNames,
-            depthLimit = 5,
             caretOffset = caretOffset,
             declarations = declarations,
             extensionDependencies = extensionDependencies,
@@ -116,20 +117,6 @@ class ShowWidgetDependenciesAction : AnAction() {
 
         return providerDeclarationsFromIndexValues(values)
     }
-
-    private fun providerDeclarationsFromIndexValues(
-        values: Collection<RiverpodProviderIndexValue>,
-    ): List<RiverpodProviderDeclaration> = values
-        .map { it.toDeclaration() }
-        .sortedWith(
-            compareBy<RiverpodProviderDeclaration> { it.filePath }
-                .thenBy { it.textOffset }
-                .thenBy { it.sourceName }
-                .thenBy { it.providerName },
-        )
-        .distinctBy { declaration ->
-            Triple(declaration.providerName, declaration.filePath, declaration.textOffset)
-        }
 
     private fun extensionDependenciesInReadAction(
         project: Project,
@@ -191,105 +178,9 @@ class ShowWidgetDependenciesAction : AnAction() {
         }
     }
 
-    internal companion object {
-        fun fallbackProviderNames(content: String): Set<String> =
-            providerRegex.findAll(codeOnly(content, dartCodeMask(content))).map { it.value }.toSet()
-
-        private val providerRegex = Regex("""[A-Za-z_${'$'}][\w${'$'}]*Provider""")
-
-        private fun dartCodeMask(content: String): BooleanArray {
-            val codeMask = BooleanArray(content.length) { true }
-            var index = 0
-            while (index < content.length) {
-                when {
-                    content.startsWith("//", index) -> {
-                        val end = content.indexOf('\n', index + 2).takeIf { it != -1 } ?: content.length
-                        codeMask.markIgnored(index, end)
-                        index = end
-                    }
-
-                    content.startsWith("/*", index) -> {
-                        val end = blockCommentEnd(content, index)
-                        codeMask.markIgnored(index, end)
-                        index = end
-                    }
-
-                    content[index] == '\'' || content[index] == '"' -> {
-                        val end = stringEnd(content, index)
-                        codeMask.markIgnored(index, end)
-                        index = end
-                    }
-
-                    else -> index++
-                }
-            }
-
-            return codeMask
-        }
-
-        private fun blockCommentEnd(content: String, start: Int): Int {
-            var depth = 0
-            var index = start
-            while (index < content.length) {
-                when {
-                    content.startsWith("/*", index) -> {
-                        depth++
-                        index += 2
-                    }
-
-                    content.startsWith("*/", index) -> {
-                        depth--
-                        index += 2
-                        if (depth == 0) {
-                            return index
-                        }
-                    }
-
-                    else -> index++
-                }
-            }
-
-            return content.length
-        }
-
-        private fun stringEnd(content: String, start: Int): Int {
-            val quote = content[start]
-            val triple = content.startsWith("$quote$quote$quote", start)
-            val raw = start > 0 &&
-                    (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-                    (start == 1 || !isIdentifierPart(content[start - 2]))
-            var index = start + if (triple) 3 else 1
-
-            while (index < content.length) {
-                if (!raw && content[index] == '\\') {
-                    index += 2
-                    continue
-                }
-                if (triple && content.startsWith("$quote$quote$quote", index)) {
-                    return index + 3
-                }
-                if (!triple && content[index] == quote) {
-                    return index + 1
-                }
-                index++
-            }
-
-            return content.length
-        }
-
-        private fun codeOnly(content: String, codeMask: BooleanArray): String = buildString(content.length) {
-            for (index in content.indices) {
-                append(if (codeMask[index]) content[index] else ' ')
-            }
-        }
-
-        private fun BooleanArray.markIgnored(start: Int, end: Int) {
-            for (index in start until end.coerceAtMost(size)) {
-                this[index] = false
-            }
-        }
-
-        private fun isIdentifierPart(char: Char): Boolean =
-            char == '_' || char == '$' || char.isLetterOrDigit()
-    }
 }
+
+internal fun fallbackProviderNames(content: String): Set<String> =
+    providerRegex.findAll(codeOnly(content, dartCodeMask(content))).map { it.value }.toSet()
+
+private val providerRegex = Regex("""[A-Za-z_$][\w$]*Provider""")

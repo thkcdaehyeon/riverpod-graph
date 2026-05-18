@@ -1,5 +1,7 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.ki960213.riverpodgraph.dart.codeOnly
+import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderUsage
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
@@ -110,7 +112,7 @@ object ProviderUsageScanner {
         }
 
         return exactSourceNames.flatMap { sourceName ->
-            val regex = Regex("""(?<![._${'$'}A-Za-z0-9])${Regex.escape(sourceName)}\s*\(""")
+            val regex = Regex($$"""(?<![._$A-Za-z0-9])$${Regex.escape(sourceName)}\s*\(""")
             regex.findAll(code)
                 .filterNot { it.range.first in declarationOffsets }
                 .filterNot { isMemberAccess(code, it.range.first) }
@@ -150,7 +152,7 @@ object ProviderUsageScanner {
             }
 
             val regex =
-                Regex("""(?<![._${'$'}A-Za-z0-9])ref\s*\.\s*${Regex.escape(memberName)}(?![_${'$'}A-Za-z0-9])""")
+                Regex($$"""(?<![._$A-Za-z0-9])ref\s*\.\s*$${Regex.escape(memberName)}(?![_$A-Za-z0-9])""")
             regex.findAll(code).flatMap { match ->
                 val memberOffset = code.indexOf(memberName, startIndex = match.range.first)
                 matchingProviderNames.map { providerName ->
@@ -249,98 +251,6 @@ object ProviderUsageScanner {
         marker = marker,
     )
 
-    private fun dartCodeMask(content: String): BooleanArray {
-        val codeMask = BooleanArray(content.length) { true }
-        var index = 0
-        while (index < content.length) {
-            when {
-                content.startsWith("//", index) -> {
-                    val end = content.indexOf('\n', index + 2).takeIf { it != -1 } ?: content.length
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content.startsWith("/*", index) -> {
-                    val end = blockCommentEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                content[index] == '\'' || content[index] == '"' -> {
-                    val end = stringEnd(content, index)
-                    codeMask.markIgnored(index, end)
-                    index = end
-                }
-
-                else -> index++
-            }
-        }
-
-        return codeMask
-    }
-
-    private fun blockCommentEnd(content: String, start: Int): Int {
-        var depth = 0
-        var index = start
-        while (index < content.length) {
-            when {
-                content.startsWith("/*", index) -> {
-                    depth++
-                    index += 2
-                }
-
-                content.startsWith("*/", index) -> {
-                    depth--
-                    index += 2
-                    if (depth == 0) {
-                        return index
-                    }
-                }
-
-                else -> index++
-            }
-        }
-
-        return content.length
-    }
-
-    private fun stringEnd(content: String, start: Int): Int {
-        val quote = content[start]
-        val triple = content.startsWith("$quote$quote$quote", start)
-        val raw = start > 0 &&
-                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-                (start == 1 || !isIdentifierPart(content[start - 2]))
-        var index = start + if (triple) 3 else 1
-
-        while (index < content.length) {
-            if (!raw && content[index] == '\\') {
-                index += 2
-                continue
-            }
-            if (triple && content.startsWith("$quote$quote$quote", index)) {
-                return index + 3
-            }
-            if (!triple && content[index] == quote) {
-                return index + 1
-            }
-            index++
-        }
-
-        return content.length
-    }
-
-    private fun codeOnly(content: String, codeMask: BooleanArray): String = buildString(content.length) {
-        for (index in content.indices) {
-            append(if (codeMask[index]) content[index] else ' ')
-        }
-    }
-
-    private fun BooleanArray.markIgnored(start: Int, end: Int) {
-        for (index in start until end.coerceAtMost(size)) {
-            this[index] = false
-        }
-    }
-
     private fun skipWhitespace(content: String, start: Int): Int {
         var index = start
         while (index < content.length && content[index].isWhitespace()) {
@@ -369,6 +279,6 @@ object ProviderUsageScanner {
     private val DECLARATION_LOOKBACK_BOUNDARIES =
         setOf(';', '{', '}', '=', '(', '[', ',', ':', '?', '+', '-', '*', '/', '%', '!', '&', '|', '^')
     private val declarationPrefixRegex = Regex("""(?:[A-Za-z_$][A-Za-z0-9_$]*|[<>\[\],.?]|\s)+""")
-    private val annotationLineRegex = Regex("""(?m)^\s*@[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*(?:\([^\n]*\))?\s*$""")
+    private val annotationLineRegex = Regex($$"""(?m)^\s*@[_$A-Za-z][_$A-Za-z0-9]*(?:\([^\n]*\))?\s*$""")
     private val whitespaceRegex = Regex("""\s+""")
 }

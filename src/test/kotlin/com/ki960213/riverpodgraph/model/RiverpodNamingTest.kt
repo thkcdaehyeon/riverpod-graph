@@ -27,7 +27,7 @@ class RiverpodNamingTest : StringSpec({
     }
 
     "생성 상위 클래스 이름은 공개 클래스 이름을 유지한다" {
-        (RiverpodNaming.generatedSuperclassForClass("UserController")) shouldBe "_${'$'}" + "UserController"
-        (RiverpodNaming.generatedSuperclassForClass("_PrivateController")) shouldBe "_${'$'}" + "PrivateController"
+        (RiverpodNaming.generatedSuperclassForClass("UserController")) shouldBe "_$" + "UserController"
+        (RiverpodNaming.generatedSuperclassForClass("_PrivateController")) shouldBe "_$" + "PrivateController"
     }
 })

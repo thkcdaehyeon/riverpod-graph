@@ -6,7 +6,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 
@@ -47,7 +47,7 @@ class RiverpodProviderResolver(private val project: Project) {
     private fun findDeclarationsInReadAction(
         symbol: String,
         scope: GlobalSearchScope,
-    ): List<RiverpodProviderDeclaration> = sortProviderIndexValues(
+    ): List<RiverpodProviderDeclaration> = providerDeclarationsFromIndexValues(
         FileBasedIndex.getInstance().getValues(RIVERPOD_PROVIDER_INDEX_NAME, symbol, scope),
     )
 
@@ -72,14 +72,3 @@ class RiverpodProviderResolver(private val project: Project) {
 
     private fun <T> readAction(action: () -> T): T = smartCancellableReadAction(project, action)
 }
-
-internal fun sortProviderIndexValues(
-    values: Collection<RiverpodProviderIndexValue>,
-): List<RiverpodProviderDeclaration> = values
-    .map { it.toDeclaration() }
-    .sortedWith(
-        compareBy<RiverpodProviderDeclaration> { it.filePath }
-            .thenBy { it.textOffset }
-            .thenBy { it.sourceName }
-            .thenBy { it.providerName },
-    )

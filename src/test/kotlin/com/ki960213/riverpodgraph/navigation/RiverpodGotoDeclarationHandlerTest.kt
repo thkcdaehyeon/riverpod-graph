@@ -82,13 +82,13 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
     fun `test 생성된 상위 클래스를 원본 클래스로 이동한다`() {
         myFixture.configureByText(
             "session.dart",
-            """
+            $$"""
             import riverpod_annotation;
 
             part 'session.g.dart';
 
             @riverpod
-            class SessionController extends _${'$'}SessionController<caret> {
+            class SessionController extends _$SessionController<caret> {
               String build() => 'Ada';
             }
             """.trimIndent(),
@@ -119,7 +119,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
     fun `test 중복 프로바이더 대상을 모두 반환한다`() {
         myFixture.configureByText(
             "user.dart",
-            """
+            $$"""
             import riverpod_annotation;
 
             part 'user.g.dart';
@@ -128,7 +128,7 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
             String user(Ref ref) => 'Ada';
 
             @riverpod
-            class User extends _${'$'}User {
+            class User extends _$User {
               String build() => 'Grace';
             }
 
@@ -145,12 +145,12 @@ class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
     fun `test 인덱스 대상이 하나여도 현재 파일의 중복 대상을 유지한다`() {
         myFixture.configureByText(
             "user.dart",
-            """
+            $$"""
             @riverpod
             String user(Ref ref) => 'Ada';
 
             @riverpod
-            class User extends _${'$'}User {
+            class User extends _$User {
               String build() => 'Grace';
             }
             """.trimIndent(),

@@ -9,7 +9,7 @@ object RiverpodNaming {
     fun providerForClass(className: String): String = "${className.providerBaseName()}Provider"
 
     /** notifier 클래스에 기대되는 생성된 상위 클래스 이름을 반환합니다. */
-    fun generatedSuperclassForClass(className: String): String = "_${'$'}${className.publicName()}"
+    fun generatedSuperclassForClass(className: String): String = $$"_$$${className.publicName()}"
 
     private fun String.providerBaseName(): String {
         val prefix = takeWhile { it == '_' }
