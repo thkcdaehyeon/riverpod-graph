@@ -67,4 +67,6 @@ tasks {
 configurations.testRuntimeClasspath {
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+    exclude(group = "net.java.dev.jna", module = "jna")
+    exclude(group = "net.java.dev.jna", module = "jna-platform")
 }

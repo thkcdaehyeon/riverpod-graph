@@ -1,7 +1,7 @@
 package com.ki960213.riverpodgraph.gutter
 
-import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.impl.FakePsiElement

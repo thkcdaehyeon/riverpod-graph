@@ -1,8 +1,8 @@
 package com.ki960213.riverpodgraph.parser
 
+import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 
 class RiverpodAnnotationParserTest : StringSpec({
     "함수형 프로바이더 선언을 파싱한다" {

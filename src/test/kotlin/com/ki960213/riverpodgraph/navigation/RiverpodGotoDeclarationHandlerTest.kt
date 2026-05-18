@@ -5,9 +5,6 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.impl.FakePsiElement
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertNotNull
 
 class RiverpodGotoDeclarationHandlerTest : BasePlatformTestCase() {
     override fun setUp() {

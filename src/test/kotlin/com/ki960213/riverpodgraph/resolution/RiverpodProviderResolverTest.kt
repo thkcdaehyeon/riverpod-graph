@@ -1,9 +1,9 @@
 package com.ki960213.riverpodgraph.resolution
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
 class RiverpodProviderResolverTest : StringSpec({
     "중복 선언을 파일 경로와 오프셋 순으로 정렬한다" {

@@ -1,13 +1,13 @@
 package com.ki960213.riverpodgraph.search
 
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.application.QueryExecutorBase
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiReference
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
@@ -15,15 +15,18 @@ import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FileBasedIndex
+import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderUsageScanner
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
-import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.index.NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 
 class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>(true) {
-    override fun processQuery(queryParameters: ReferencesSearch.SearchParameters, consumer: Processor<in PsiReference>) {
+    override fun processQuery(
+        queryParameters: ReferencesSearch.SearchParameters,
+        consumer: Processor<in PsiReference>
+    ) {
         val element = queryParameters.elementToSearch
         val project = element.project
         val activationService = RiverpodActivationService.getInstance(project)
@@ -107,6 +110,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
             is LocalSearchScope -> searchScope.scope.asSequence()
                 .mapNotNull { it.containingFile?.virtualFile }
                 .distinct()
+
             else -> FilenameIndex.getAllFilesByExt(project, "dart", indexScope).asSequence()
         }
 
@@ -153,11 +157,11 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
         extensionMemberNames: Set<String>,
     ): Boolean =
         mayContainProviderSource(text, providerTarget) ||
-            mayContainExtensionMember(text, extensionMemberNames)
+                mayContainExtensionMember(text, extensionMemberNames)
 
     private fun mayContainProviderSource(text: String, providerTarget: ProviderTarget): Boolean =
         text.contains(providerTarget.providerName) ||
-            providerTarget.directCallSourceNames.any { text.contains(it) }
+                providerTarget.directCallSourceNames.any { text.contains(it) }
 
     private fun mayContainExtensionMember(text: String, extensionMemberNames: Set<String>): Boolean {
         for (memberName in extensionMemberNames) {

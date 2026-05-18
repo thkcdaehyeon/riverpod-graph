@@ -70,7 +70,7 @@ class ProvidersPanel : JPanel(BorderLayout()) {
             val keepAliveSuffix = if (declaration.keepAlive) " keepAlive" else ""
 
             return "$privatePrefix${declaration.providerName}$signature : " +
-                "${declaration.returnType}$keepAliveSuffix - ${declaration.filePath}:${declaration.line}"
+                    "${declaration.returnType}$keepAliveSuffix - ${declaration.filePath}:${declaration.line}"
         }
     }
 }

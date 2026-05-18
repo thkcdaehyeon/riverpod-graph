@@ -13,7 +13,11 @@ import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
 import com.ki960213.riverpodgraph.resolution.RiverpodProviderResolver
 
 class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
-    override fun getGotoDeclarationTargets(sourceElement: PsiElement?, offset: Int, editor: Editor): Array<PsiElement>? {
+    override fun getGotoDeclarationTargets(
+        sourceElement: PsiElement?,
+        offset: Int,
+        editor: Editor
+    ): Array<PsiElement>? {
         val element = sourceElement ?: return null
         val file = element.containingFile ?: return null
         if (!isDartFile(file)) {

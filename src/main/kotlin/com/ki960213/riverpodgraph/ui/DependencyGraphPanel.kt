@@ -6,9 +6,9 @@ import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Container
-import java.util.Locale
-import javax.swing.JTabbedPane
+import java.util.*
 import javax.swing.JPanel
+import javax.swing.JTabbedPane
 import javax.swing.SwingUtilities
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
@@ -93,6 +93,7 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
             is JTabbedPane -> (0 until component.tabCount).firstNotNullOfOrNull { index ->
                 findIn(component.getComponentAt(index))
             }
+
             is Container -> component.components.firstNotNullOfOrNull(::findIn)
             else -> null
         }
@@ -115,6 +116,7 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
                         findInChildren(component, graphPanel)
                     }
                 }
+
                 is Container -> findInChildren(component, graphPanel)
                 else -> null
             }

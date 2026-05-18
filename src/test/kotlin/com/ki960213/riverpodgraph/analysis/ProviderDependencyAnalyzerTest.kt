@@ -1,13 +1,9 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.ki960213.riverpodgraph.model.*
+import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
-import com.ki960213.riverpodgraph.model.RiverpodMarker
-import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
-import com.ki960213.riverpodgraph.model.RiverpodProviderKind
-import com.ki960213.riverpodgraph.model.RiverpodUsageKind
-import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
 
 class ProviderDependencyAnalyzerTest : StringSpec({
     "ref 사용에서 프로바이더 의존성을 분석한다" {
@@ -31,7 +27,10 @@ class ProviderDependencyAnalyzerTest : StringSpec({
 
         val edges = ProviderDependencyAnalyzer.analyzeFile("lib/profile.dart", source, declarations)
 
-        (edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider }) shouldBe listOf("userProvider", "sessionProvider")
+        (edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider }) shouldBe listOf(
+            "userProvider",
+            "sessionProvider"
+        )
     }
 
     "다른 파일의 선언 오프셋 충돌이면 직접 호출을 유지한다" {
@@ -85,13 +84,13 @@ class ProviderDependencyAnalyzerTest : StringSpec({
         val edges = ProviderDependencyAnalyzer.analyzeFile("lib/profile.dart", source, declarations)
 
         (edges.filter { it.fromProvider == "profileProvider" }) shouldBe listOf(
-                RiverpodDependencyEdge(
-                    fromProvider = "profileProvider",
-                    toProvider = "userProvider",
-                    usageKind = RiverpodUsageKind.EXTENSION_MEMBER,
-                    marker = RiverpodMarker.REF_EXTENSION,
-                ),
-            )
+            RiverpodDependencyEdge(
+                fromProvider = "profileProvider",
+                toProvider = "userProvider",
+                usageKind = RiverpodUsageKind.EXTENSION_MEMBER,
+                marker = RiverpodMarker.REF_EXTENSION,
+            ),
+        )
     }
 
     "순환에 포함된 간선을 표시한다" {

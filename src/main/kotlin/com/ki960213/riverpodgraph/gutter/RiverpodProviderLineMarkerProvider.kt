@@ -6,7 +6,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.psi.PsiElement
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
-import java.util.Locale
+import java.util.*
 
 class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
@@ -38,8 +38,8 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
         if (text.length > MAX_ANNOTATION_TEXT_LENGTH || text.any { it == '\n' || it == '\r' }) return false
 
         return text == "@riverpod" ||
-            text == "@Riverpod" ||
-            (text.startsWith("@Riverpod(") && text.endsWith(")"))
+                text == "@Riverpod" ||
+                (text.startsWith("@Riverpod(") && text.endsWith(")"))
     }
 
     private fun isCommentOrString(element: PsiElement): Boolean {
@@ -48,11 +48,11 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
 
         val parentText = element.parent?.text?.trimStart() ?: return false
         return parentText.startsWith("//") ||
-            parentText.startsWith("/*") ||
-            parentText.startsWith("'") ||
-            parentText.startsWith("\"") ||
-            parentText.startsWith("r'") ||
-            parentText.startsWith("r\"")
+                parentText.startsWith("/*") ||
+                parentText.startsWith("'") ||
+                parentText.startsWith("\"") ||
+                parentText.startsWith("r'") ||
+                parentText.startsWith("r\"")
     }
 
     private fun hasCommentOrStringToken(element: PsiElement?): Boolean {

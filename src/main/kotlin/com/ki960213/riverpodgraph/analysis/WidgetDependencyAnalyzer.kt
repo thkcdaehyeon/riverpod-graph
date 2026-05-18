@@ -113,7 +113,7 @@ object WidgetDependencyAnalyzer {
     ): IntRange? {
         val stateClassRegex = Regex(
             """\bclass\s+[A-Za-z_${'$'}][A-Za-z0-9_${'$'}]*\s+extends\s+""" +
-                """(?:ConsumerState|State|HookConsumerState)\s*<\s*${Regex.escape(widgetName)}\s*>""",
+                    """(?:ConsumerState|State|HookConsumerState)\s*<\s*${Regex.escape(widgetName)}\s*>""",
         )
         val stateMatch = stateClassRegex.find(code) ?: return null
         val stateRange = classRange(content, codeMask, stateMatch.range.first) ?: return null
@@ -142,7 +142,9 @@ object WidgetDependencyAnalyzer {
 
         return when {
             content.startsWith("=>", bodyStart) -> bodyStart until statementEnd(content, codeMask, bodyStart + 2)
-            content[bodyStart] == '{' -> bodyStart..(findMatchingPair(content, codeMask, bodyStart, '{', '}') ?: return null)
+            content[bodyStart] == '{' -> bodyStart..(findMatchingPair(content, codeMask, bodyStart, '{', '}')
+                ?: return null)
+
             else -> null
         }
     }
@@ -213,16 +215,19 @@ object WidgetDependencyAnalyzer {
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content.startsWith("/*", index) -> {
                     val end = blockCommentEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content[index] == '\'' || content[index] == '"' -> {
                     val end = stringEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 else -> index++
             }
         }
@@ -239,6 +244,7 @@ object WidgetDependencyAnalyzer {
                     depth++
                     index += 2
                 }
+
                 content.startsWith("*/", index) -> {
                     depth--
                     index += 2
@@ -246,6 +252,7 @@ object WidgetDependencyAnalyzer {
                         return index
                     }
                 }
+
                 else -> index++
             }
         }
@@ -257,8 +264,8 @@ object WidgetDependencyAnalyzer {
         val quote = content[start]
         val triple = content.startsWith("$quote$quote$quote", start)
         val raw = start > 0 &&
-            (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-            (start == 1 || !isIdentifierPart(content[start - 2]))
+                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
+                (start == 1 || !isIdentifierPart(content[start - 2]))
         var index = start + if (triple) 3 else 1
 
         while (index < content.length) {
@@ -362,11 +369,12 @@ object WidgetDependencyAnalyzer {
 
     private val widgetClassRegex = Regex(
         """\bclass\s+([_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*)\s+extends\s+""" +
-            """(ConsumerWidget|ConsumerStatefulWidget|HookConsumerWidget|StatefulHookConsumerWidget|""" +
-            """StatelessWidget|StatefulWidget)\b""",
+                """(ConsumerWidget|ConsumerStatefulWidget|HookConsumerWidget|StatefulHookConsumerWidget|""" +
+                """StatelessWidget|StatefulWidget)\b""",
     )
     private val buildMethodRegex = Regex("""\bWidget\s+build\s*\(""")
-    private val constructorRegex = Regex("""\b([A-Z][_${'$'}A-Za-z0-9]*)\s*(?:\.\s*[A-Za-z_][_${'$'}A-Za-z0-9]*)?\s*\(""")
+    private val constructorRegex =
+        Regex("""\b([A-Z][_${'$'}A-Za-z0-9]*)\s*(?:\.\s*[A-Za-z_][_${'$'}A-Za-z0-9]*)?\s*\(""")
     private val loopRegex = Regex("""(?:\bfor\s*\(|\.(?:map|forEach)\s*(?:<[^(){};]*>)?\(|\bforEach\s*\()""")
     private val callbackRegex = Regex("""(?:\b(?:builder|itemBuilder)\s*:|=>)""")
     private val conditionalRegex = Regex("""\bif\s*\(""")

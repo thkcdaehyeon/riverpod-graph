@@ -1,11 +1,11 @@
 package com.ki960213.riverpodgraph.analysis
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.actions.ShowWidgetDependenciesAction
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
 class WidgetDependencyAnalyzerTest : StringSpec({
     "프로바이더 사용과 표시된 자식 위젯 후보를 찾는다" {
@@ -162,7 +162,15 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             depthLimit = 5,
         )
 
-        (result.childWidgets.map { it.name }) shouldBe listOf("OnePanel", "TwoPanel", "ThreePanel", "FourPanel", "FivePanel", "SixPanel", "SevenPanel")
+        (result.childWidgets.map { it.name }) shouldBe listOf(
+            "OnePanel",
+            "TwoPanel",
+            "ThreePanel",
+            "FourPanel",
+            "FivePanel",
+            "SixPanel",
+            "SevenPanel"
+        )
     }
 
     "형제 위젯 사이로 마커가 번지지 않는다" {
@@ -187,8 +195,18 @@ class WidgetDependencyAnalyzerTest : StringSpec({
             depthLimit = 10,
         )
 
-        (result.childWidgets.map { it.name }) shouldBe listOf("AdminPanel", "PlainPanel", "UserTile", "PlainAfterCallback")
-        (result.childWidgets.map { it.marker }) shouldBe listOf(RiverpodMarker.CONDITIONAL, null, RiverpodMarker.CALLBACK, null)
+        (result.childWidgets.map { it.name }) shouldBe listOf(
+            "AdminPanel",
+            "PlainPanel",
+            "UserTile",
+            "PlainAfterCallback"
+        )
+        (result.childWidgets.map { it.marker }) shouldBe listOf(
+            RiverpodMarker.CONDITIONAL,
+            null,
+            RiverpodMarker.CALLBACK,
+            null
+        )
     }
 
     "현재 위젯 생성자와 명백한 비위젯 생성자를 제외한다" {

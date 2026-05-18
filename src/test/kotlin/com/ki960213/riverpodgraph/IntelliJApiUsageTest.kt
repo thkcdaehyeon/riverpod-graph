@@ -48,8 +48,26 @@ class IntelliJApiUsageTest : StringSpec({
 
     "background entry points do not depend on ProgressManager cancellation checks" {
         val backgroundEntryPoints = listOf(
-            Path.of("src", "main", "kotlin", "com", "ki960213", "riverpodgraph", "actions", "ShowProviderDependencyGraphAction.kt"),
-            Path.of("src", "main", "kotlin", "com", "ki960213", "riverpodgraph", "actions", "ShowWidgetDependenciesAction.kt"),
+            Path.of(
+                "src",
+                "main",
+                "kotlin",
+                "com",
+                "ki960213",
+                "riverpodgraph",
+                "actions",
+                "ShowProviderDependencyGraphAction.kt"
+            ),
+            Path.of(
+                "src",
+                "main",
+                "kotlin",
+                "com",
+                "ki960213",
+                "riverpodgraph",
+                "actions",
+                "ShowWidgetDependenciesAction.kt"
+            ),
             Path.of("src", "main", "kotlin", "com", "ki960213", "riverpodgraph", "ui", "RiverpodToolWindowFactory.kt"),
         )
         val offenders = backgroundEntryPoints

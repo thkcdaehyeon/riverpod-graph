@@ -101,10 +101,12 @@ object RefExtensionScanner {
                 } else {
                     braceDepth++
                 }
+
                 '}' -> if (braceDepth > 0) braceDepth--
                 ';' -> if (isTopLevel(parenDepth, bracketDepth, braceDepth)) {
                     segmentStart = index + 1
                 }
+
                 '=' -> if (
                     index + 1 < bodyEnd &&
                     code[index + 1] == '>' &&
@@ -201,10 +203,18 @@ object RefExtensionScanner {
 
         for (providerName in providerNames) {
             val explicitReceiverRegex = Regex(
-                """(?<![._${'$'}A-Za-z0-9])(?:ref|this)\s*\.\s*(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*${Regex.escape(providerName)}(?![_${'$'}A-Za-z0-9])""",
+                """(?<![._${'$'}A-Za-z0-9])(?:ref|this)\s*\.\s*(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*${
+                    Regex.escape(
+                        providerName
+                    )
+                }(?![_${'$'}A-Za-z0-9])""",
             )
             val bareCallRegex = Regex(
-                """(?<![._${'$'}A-Za-z0-9])(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*${Regex.escape(providerName)}(?![_${'$'}A-Za-z0-9])""",
+                """(?<![._${'$'}A-Za-z0-9])(?:watch|read|listen|invalidate|refresh)\s*(?:<[^(){};]*>)?\s*\(\s*${
+                    Regex.escape(
+                        providerName
+                    )
+                }(?![_${'$'}A-Za-z0-9])""",
             )
             matches += providerMatches(code, expressionStart, expressionEnd, providerName, explicitReceiverRegex)
             matches += providerMatches(
@@ -350,16 +360,19 @@ object RefExtensionScanner {
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content.startsWith("/*", index) -> {
                     val end = blockCommentEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content[index] == '\'' || content[index] == '"' -> {
                     val end = stringEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 else -> index++
             }
         }
@@ -376,6 +389,7 @@ object RefExtensionScanner {
                     depth++
                     index += 2
                 }
+
                 content.startsWith("*/", index) -> {
                     depth--
                     index += 2
@@ -383,6 +397,7 @@ object RefExtensionScanner {
                         return index
                     }
                 }
+
                 else -> index++
             }
         }
@@ -394,8 +409,8 @@ object RefExtensionScanner {
         val quote = content[start]
         val triple = content.startsWith("$quote$quote$quote", start)
         val raw = start > 0 &&
-            (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-            (start == 1 || !isIdentifierPart(content[start - 2]))
+                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
+                (start == 1 || !isIdentifierPart(content[start - 2]))
         var index = start + if (triple) 3 else 1
 
         while (index < content.length) {

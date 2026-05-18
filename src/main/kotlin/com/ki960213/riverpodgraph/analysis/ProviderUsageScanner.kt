@@ -1,7 +1,7 @@
 package com.ki960213.riverpodgraph.analysis
 
-import com.ki960213.riverpodgraph.model.RiverpodProviderUsage
 import com.ki960213.riverpodgraph.model.RiverpodMarker
+import com.ki960213.riverpodgraph.model.RiverpodProviderUsage
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 
 object ProviderUsageScanner {
@@ -143,7 +143,8 @@ object ProviderUsageScanner {
                 return@flatMap emptyList()
             }
 
-            val regex = Regex("""(?<![._${'$'}A-Za-z0-9])ref\s*\.\s*${Regex.escape(memberName)}(?![_${'$'}A-Za-z0-9])""")
+            val regex =
+                Regex("""(?<![._${'$'}A-Za-z0-9])ref\s*\.\s*${Regex.escape(memberName)}(?![_${'$'}A-Za-z0-9])""")
             regex.findAll(code).flatMap { match ->
                 val memberOffset = code.indexOf(memberName, startIndex = match.range.first)
                 matchingProviderNames.map { providerName ->
@@ -199,7 +200,9 @@ object ProviderUsageScanner {
         if (prefix.isEmpty()) {
             return false
         }
-        if (prefix in DIRECT_CALL_PREFIX_KEYWORDS || prefix.split(whitespaceRegex).firstOrNull() in DIRECT_CALL_PREFIX_KEYWORDS) {
+        if (prefix in DIRECT_CALL_PREFIX_KEYWORDS || prefix.split(whitespaceRegex)
+                .firstOrNull() in DIRECT_CALL_PREFIX_KEYWORDS
+        ) {
             return false
         }
         if (prefix.contains(">") && !prefix.contains("<")) {
@@ -250,16 +253,19 @@ object ProviderUsageScanner {
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content.startsWith("/*", index) -> {
                     val end = blockCommentEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content[index] == '\'' || content[index] == '"' -> {
                     val end = stringEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 else -> index++
             }
         }
@@ -276,6 +282,7 @@ object ProviderUsageScanner {
                     depth++
                     index += 2
                 }
+
                 content.startsWith("*/", index) -> {
                     depth--
                     index += 2
@@ -283,6 +290,7 @@ object ProviderUsageScanner {
                         return index
                     }
                 }
+
                 else -> index++
             }
         }
@@ -294,8 +302,8 @@ object ProviderUsageScanner {
         val quote = content[start]
         val triple = content.startsWith("$quote$quote$quote", start)
         val raw = start > 0 &&
-            (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-            (start == 1 || !isIdentifierPart(content[start - 2]))
+                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
+                (start == 1 || !isIdentifierPart(content[start - 2]))
         var index = start + if (triple) 3 else 1
 
         while (index < content.length) {
@@ -350,8 +358,10 @@ object ProviderUsageScanner {
         char == '_' || char == '$' || char.isLetterOrDigit()
 
     private val DIRECT_CALL_PREFIX_KEYWORDS = setOf("return", "await", "yield", "throw")
-    private val EXPRESSION_PREFIX_CHARS = setOf('=', '(', '[', '{', ',', ':', '?', '+', '-', '*', '/', '%', '!', '&', '|', '^')
-    private val DECLARATION_LOOKBACK_BOUNDARIES = setOf(';', '{', '}', '=', '(', '[', ',', ':', '?', '+', '-', '*', '/', '%', '!', '&', '|', '^')
+    private val EXPRESSION_PREFIX_CHARS =
+        setOf('=', '(', '[', '{', ',', ':', '?', '+', '-', '*', '/', '%', '!', '&', '|', '^')
+    private val DECLARATION_LOOKBACK_BOUNDARIES =
+        setOf(';', '{', '}', '=', '(', '[', ',', ':', '?', '+', '-', '*', '/', '%', '!', '&', '|', '^')
     private val declarationPrefixRegex = Regex("""(?:[A-Za-z_$][A-Za-z0-9_$]*|[<>\[\],.?]|\s)+""")
     private val annotationLineRegex = Regex("""(?m)^\s*@[_${'$'}A-Za-z][_${'$'}A-Za-z0-9]*(?:\([^\n]*\))?\s*$""")
     private val whitespaceRegex = Regex("""\s+""")

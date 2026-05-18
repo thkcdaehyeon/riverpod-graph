@@ -39,12 +39,8 @@ class ShowProviderDependencyGraphAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
-        if (!file.isRelevantDartFile()) {
-            return
-        }
-        if (!RiverpodActivationService.getInstance(project).isFileActive(file)) {
-            return
-        }
+        if (!file.isRelevantDartFile()) return
+        if (!RiverpodActivationService.getInstance(project).isFileActive(file)) return
 
         val declaration = declarationFromContext(e) ?: return
         project.launchRiverpodBackgroundTask("Analyze Riverpod Provider Dependencies") {
@@ -70,9 +66,9 @@ class ShowProviderDependencyGraphAction : AnAction() {
         val element = e.getData(CommonDataKeys.PSI_ELEMENT)
         val project = e.project
         val relevant = project != null &&
-            file?.isRelevantDartFile() == true &&
-            RiverpodActivationService.getInstance(project).isFileActive(file) &&
-            symbolCandidates(file, editor, element).isNotEmpty()
+                file?.isRelevantDartFile() == true &&
+                RiverpodActivationService.getInstance(project).isFileActive(file) &&
+                symbolCandidates(file, editor, element).isNotEmpty()
 
         e.presentation.isEnabled = relevant
         e.presentation.isVisible = relevant

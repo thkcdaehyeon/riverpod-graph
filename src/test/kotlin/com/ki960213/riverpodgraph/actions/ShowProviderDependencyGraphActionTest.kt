@@ -1,10 +1,10 @@
 package com.ki960213.riverpodgraph.actions
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
 class ShowProviderDependencyGraphActionTest : StringSpec({
     "사용 파일에서 실행해도 선언 파일 기준 그래프를 만든다" {
@@ -53,7 +53,7 @@ class ShowProviderDependencyGraphActionTest : StringSpec({
             }
         """.trimIndent()
         val declarations = RiverpodAnnotationParser.parse("lib/a.dart", aSource) +
-            RiverpodAnnotationParser.parse("lib/b.dart", bSource)
+                RiverpodAnnotationParser.parse("lib/b.dart", bSource)
 
         val edges = providerGraphEdgesForSourceFiles(
             sourceFiles = listOf(
@@ -64,8 +64,8 @@ class ShowProviderDependencyGraphActionTest : StringSpec({
         )
 
         (edges.map { "${it.fromProvider}->${it.toProvider}:${it.usageKind}:${it.marker}" }) shouldBe listOf(
-                "aProvider->bProvider:${RiverpodUsageKind.WATCH}:${RiverpodMarker.CYCLE}",
-                "bProvider->aProvider:${RiverpodUsageKind.READ}:${RiverpodMarker.CYCLE}",
-            )
+            "aProvider->bProvider:${RiverpodUsageKind.WATCH}:${RiverpodMarker.CYCLE}",
+            "bProvider->aProvider:${RiverpodUsageKind.READ}:${RiverpodMarker.CYCLE}",
+        )
     }
 })

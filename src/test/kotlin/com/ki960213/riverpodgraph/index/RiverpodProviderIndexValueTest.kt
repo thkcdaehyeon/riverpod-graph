@@ -1,8 +1,8 @@
 package com.ki960213.riverpodgraph.index
 
+import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream

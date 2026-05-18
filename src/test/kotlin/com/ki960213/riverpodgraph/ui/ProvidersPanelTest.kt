@@ -1,9 +1,9 @@
 package com.ki960213.riverpodgraph.ui
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import javax.swing.SwingUtilities
 
 class ProvidersPanelTest : StringSpec({
@@ -52,10 +52,10 @@ class ProvidersPanelTest : StringSpec({
         SwingUtilities.invokeAndWait {}
 
         (panel.providerRows()) shouldBe listOf(
-                "firstProvider : String - lib/a.dart:2",
-                "secondProvider : String - lib/a.dart:20",
-                "lateProvider : String - lib/z.dart:1",
-            )
+            "firstProvider : String - lib/a.dart:2",
+            "secondProvider : String - lib/a.dart:20",
+            "lateProvider : String - lib/z.dart:1",
+        )
     }
 
 })

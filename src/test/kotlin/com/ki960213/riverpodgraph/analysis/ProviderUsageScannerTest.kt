@@ -1,9 +1,9 @@
 package com.ki960213.riverpodgraph.analysis
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
 class ProviderUsageScannerTest : StringSpec({
     "일반 ref 호출과 수정자, override, 직접 호출을 스캔한다" {
@@ -30,25 +30,25 @@ class ProviderUsageScannerTest : StringSpec({
         )
 
         (usages.map { it.kind }) shouldBe listOf(
-                RiverpodUsageKind.WATCH,
-                RiverpodUsageKind.NOTIFIER,
-                RiverpodUsageKind.SELECT,
-                RiverpodUsageKind.INVALIDATE,
-                RiverpodUsageKind.FUTURE,
-                RiverpodUsageKind.OVERRIDE,
-                RiverpodUsageKind.DIRECT_CALL,
-            )
+            RiverpodUsageKind.WATCH,
+            RiverpodUsageKind.NOTIFIER,
+            RiverpodUsageKind.SELECT,
+            RiverpodUsageKind.INVALIDATE,
+            RiverpodUsageKind.FUTURE,
+            RiverpodUsageKind.OVERRIDE,
+            RiverpodUsageKind.DIRECT_CALL,
+        )
         (usages.map { it.filePath }) shouldBe List(usages.size) { "lib/widget.dart" }
         (usages.map { it.line }) shouldBe listOf(1, 2, 3, 4, 5, 6, 7)
         (usages.map { it.textOffset }) shouldBe listOf(
-                content.indexOf("userProvider"),
-                content.indexOf("sessionProvider"),
-                content.indexOf("settingsProvider"),
-                content.indexOf("cacheProvider"),
-                content.indexOf("feedProvider"),
-                content.indexOf("userProvider.overrideWith"),
-                content.indexOf("user();"),
-            )
+            content.indexOf("userProvider"),
+            content.indexOf("sessionProvider"),
+            content.indexOf("settingsProvider"),
+            content.indexOf("cacheProvider"),
+            content.indexOf("feedProvider"),
+            content.indexOf("userProvider.overrideWith"),
+            content.indexOf("user();"),
+        )
     }
 
     "주석, 문자열, 선언, 멤버 직접 호출은 무시한다" {
@@ -133,12 +133,12 @@ class ProviderUsageScannerTest : StringSpec({
         )
 
         (usages.map { it.kind }) shouldBe listOf(
-                RiverpodUsageKind.WATCH,
-                RiverpodUsageKind.NOTIFIER,
-                RiverpodUsageKind.SELECT,
-                RiverpodUsageKind.INVALIDATE,
-                RiverpodUsageKind.FUTURE,
-            )
+            RiverpodUsageKind.WATCH,
+            RiverpodUsageKind.NOTIFIER,
+            RiverpodUsageKind.SELECT,
+            RiverpodUsageKind.INVALIDATE,
+            RiverpodUsageKind.FUTURE,
+        )
     }
 
     "ref 확장 멤버 사용을 스캔한다" {

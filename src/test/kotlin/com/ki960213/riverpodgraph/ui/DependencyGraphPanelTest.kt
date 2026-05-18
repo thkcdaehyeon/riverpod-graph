@@ -1,12 +1,12 @@
 package com.ki960213.riverpodgraph.ui
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
-import javax.swing.JTabbedPane
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import javax.swing.JPanel
+import javax.swing.JTabbedPane
 
 class DependencyGraphPanelTest : StringSpec({
     "컨테이너 안에 중첩된 패널을 찾는다" {
@@ -72,8 +72,8 @@ class DependencyGraphPanelTest : StringSpec({
 
         (panel.selectedProvider) shouldBe "profileProvider"
         (panel.dependencyRows()) shouldBe listOf(
-                "sessionProvider [extension member] [ref extension]",
-                "userProvider [watch] [cycle]",
-            )
+            "sessionProvider [extension member] [ref extension]",
+            "userProvider [watch] [cycle]",
+        )
     }
 })

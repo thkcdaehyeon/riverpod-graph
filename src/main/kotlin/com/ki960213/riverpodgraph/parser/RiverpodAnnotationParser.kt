@@ -161,6 +161,7 @@ object RiverpodAnnotationParser {
                     index = (findMatchingPair(content, codeMask, index, '(', ')') ?: index) + 1
                     continue
                 }
+
                 '{', ';', '=' -> return null
             }
 
@@ -378,16 +379,19 @@ object RiverpodAnnotationParser {
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content.startsWith("/*", index) -> {
                     val end = blockCommentEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 content[index] == '\'' || content[index] == '"' -> {
                     val end = stringEnd(content, index)
                     codeMask.markIgnored(index, end)
                     index = end
                 }
+
                 else -> index++
             }
         }
@@ -404,6 +408,7 @@ object RiverpodAnnotationParser {
                     depth++
                     index += 2
                 }
+
                 content.startsWith("*/", index) -> {
                     depth--
                     index += 2
@@ -411,6 +416,7 @@ object RiverpodAnnotationParser {
                         return index
                     }
                 }
+
                 else -> index++
             }
         }
@@ -422,8 +428,8 @@ object RiverpodAnnotationParser {
         val quote = content[start]
         val triple = content.startsWith("$quote$quote$quote", start)
         val raw = start > 0 &&
-            (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-            (start == 1 || !isIdentifierPart(content[start - 2]))
+                (content[start - 1] == 'r' || content[start - 1] == 'R') &&
+                (start == 1 || !isIdentifierPart(content[start - 2]))
         var index = start + if (triple) 3 else 1
 
         while (index < content.length) {

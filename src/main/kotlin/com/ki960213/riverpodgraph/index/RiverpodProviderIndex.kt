@@ -1,14 +1,10 @@
 package com.ki960213.riverpodgraph.index
 
-import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
-import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
-import com.intellij.util.indexing.DataIndexer
-import com.intellij.util.indexing.FileBasedIndex
-import com.intellij.util.indexing.FileBasedIndexExtension
-import com.intellij.util.indexing.FileContent
-import com.intellij.util.indexing.ID
+import com.intellij.util.indexing.*
 import com.intellij.util.io.EnumeratorStringDescriptor
 import com.intellij.util.io.KeyDescriptor
+import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
+import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
 
 class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIndexValue>() {
     override fun getName(): ID<String, RiverpodProviderIndexValue> = NAME
@@ -31,8 +27,8 @@ class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIn
 
     override fun getInputFilter(): FileBasedIndex.InputFilter = FileBasedIndex.InputFilter { file ->
         !file.fileType.isBinary &&
-            file.name.endsWith(".dart") &&
-            !file.name.endsWith(".g.dart")
+                file.name.endsWith(".dart") &&
+                !file.name.endsWith(".g.dart")
     }
 
     override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE

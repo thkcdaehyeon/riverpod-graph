@@ -1,9 +1,9 @@
 package com.ki960213.riverpodgraph.ui
 
-import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 
 class RiverpodToolWindowFactoryTest : StringSpec({
     "인덱스 값에서 프로바이더 경로와 오프셋으로 중복 제거 후 정렬한다" {
@@ -16,7 +16,11 @@ class RiverpodToolWindowFactoryTest : StringSpec({
             ),
         )
 
-        (declarations.map { "${it.providerName}:${it.filePath}:${it.textOffset}" }) shouldBe listOf("aProvider:lib/a.dart:2", "aProvider:lib/a.dart:8", "zProvider:lib/z.dart:4")
+        (declarations.map { "${it.providerName}:${it.filePath}:${it.textOffset}" }) shouldBe listOf(
+            "aProvider:lib/a.dart:2",
+            "aProvider:lib/a.dart:8",
+            "zProvider:lib/z.dart:4"
+        )
     }
 
 })
