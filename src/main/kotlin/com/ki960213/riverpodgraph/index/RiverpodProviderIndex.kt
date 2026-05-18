@@ -9,7 +9,7 @@ import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
 /** Dart 파일의 Riverpod 프로바이더 선언을 저장하는 IntelliJ 파일 기반 인덱스입니다. */
 class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIndexValue>() {
     /** 인덱스 식별자를 반환합니다. */
-    override fun getName(): ID<String, RiverpodProviderIndexValue> = NAME
+    override fun getName(): ID<String, RiverpodProviderIndexValue> = RIVERPOD_PROVIDER_INDEX_NAME
 
     /** Dart 파일의 Riverpod 프로바이더 선언에 대한 인덱스 항목을 만듭니다. */
     override fun getIndexer(): DataIndexer<String, RiverpodProviderIndexValue, FileContent> = DataIndexer { input ->
@@ -64,4 +64,4 @@ private fun RiverpodProviderDeclaration.toIndexValue(): RiverpodProviderIndexVal
 )
 
 /** Riverpod 프로바이더 선언을 위한 인덱스 식별자입니다. */
-val NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")
+val RIVERPOD_PROVIDER_INDEX_NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")

@@ -38,12 +38,11 @@ class RiverpodActivationService(private val project: Project) {
         isModuleActiveInReadAction(module)
     }
 
-    private fun isModuleActiveInReadAction(module: Module): Boolean {
-        return ModuleRootManager.getInstance(module).contentRoots.any { root ->
+    private fun isModuleActiveInReadAction(module: Module): Boolean =
+        ModuleRootManager.getInstance(module).contentRoots.any { root ->
             val pubspec = root.findChild("pubspec.yaml") ?: return@any false
             hasRiverpodAnnotation(pubspec)
         }
-    }
 
     private fun hasRiverpodAnnotation(pubspec: VirtualFile): Boolean {
         return try {

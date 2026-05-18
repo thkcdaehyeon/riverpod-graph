@@ -5,7 +5,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
-import com.ki960213.riverpodgraph.index.NAME
+import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
@@ -47,23 +47,19 @@ class RiverpodProviderResolver(private val project: Project) {
     private fun findDeclarationsInReadAction(
         symbol: String,
         scope: GlobalSearchScope,
-    ): List<RiverpodProviderDeclaration> {
-        return sortProviderIndexValues(
-            FileBasedIndex.getInstance().getValues(NAME, symbol, scope),
-        )
-    }
+    ): List<RiverpodProviderDeclaration> = sortProviderIndexValues(
+        FileBasedIndex.getInstance().getValues(RIVERPOD_PROVIDER_INDEX_NAME, symbol, scope),
+    )
 
     private fun findSourceElementsInReadAction(
         symbol: String,
         scope: GlobalSearchScope,
     ): List<PsiElement> {
         val declarations = findDeclarationsInReadAction(symbol, scope)
-        if (declarations.isEmpty()) {
-            return emptyList()
-        }
+        if (declarations.isEmpty()) return emptyList()
 
         val filesByPath = FileBasedIndex.getInstance()
-            .getContainingFiles(NAME, symbol, scope)
+            .getContainingFiles(RIVERPOD_PROVIDER_INDEX_NAME, symbol, scope)
             .associateBy { it.path }
         val psiManager = PsiManager.getInstance(project)
 

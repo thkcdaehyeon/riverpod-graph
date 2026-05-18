@@ -21,7 +21,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzer
-import com.ki960213.riverpodgraph.index.NAME
+import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -124,8 +124,8 @@ class ShowProviderDependencyGraphAction : AnAction() {
     private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
         val index = FileBasedIndex.getInstance()
         val scope = GlobalSearchScope.projectScope(project)
-        val values = index.getAllKeys(NAME, project)
-            .flatMap { key -> index.getValues(NAME, key, scope) }
+        val values = index.getAllKeys(RIVERPOD_PROVIDER_INDEX_NAME, project)
+            .flatMap { key -> index.getValues(RIVERPOD_PROVIDER_INDEX_NAME, key, scope) }
 
         return providerDeclarationsFromIndexValues(values)
     }
@@ -255,7 +255,8 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
     private fun PsiFile.isRelevantDartFile(): Boolean {
         val fileName = virtualFile?.name ?: name
-        return fileName.endsWith(".dart") && !fileName.endsWith(".g.dart")
+        if (!fileName.endsWith(".dart")) return false
+        return !fileName.removeSuffix(".dart").contains(".")
     }
 
     private fun <T> withAvailableIndex(action: () -> T): T? {

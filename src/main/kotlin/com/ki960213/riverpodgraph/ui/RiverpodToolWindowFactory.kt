@@ -10,7 +10,7 @@ import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.content.ContentFactory
 import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
-import com.ki960213.riverpodgraph.index.NAME
+import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
@@ -68,8 +68,8 @@ internal fun loadProviders(project: Project): List<RiverpodProviderDeclaration> 
     smartCancellableReadAction(project) {
         val index = FileBasedIndex.getInstance()
         val scope = GlobalSearchScope.projectScope(project)
-        val values = index.getAllKeys(NAME, project)
-            .flatMap { key -> index.getValues(NAME, key, scope) }
+        val values = index.getAllKeys(RIVERPOD_PROVIDER_INDEX_NAME, project)
+            .flatMap { key -> index.getValues(RIVERPOD_PROVIDER_INDEX_NAME, key, scope) }
 
         providerDeclarationsFromIndexValues(values)
     }

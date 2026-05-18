@@ -19,7 +19,7 @@ import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderUsageScanner
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
-import com.ki960213.riverpodgraph.index.NAME
+import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 
 /** Dart 파일에서 인덱싱된 Riverpod 프로바이더 참조를 검색합니다. */
@@ -89,7 +89,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
 
     private fun providerTargetFor(symbol: String, scope: GlobalSearchScope): ProviderTarget? {
         val values = withAvailableIndex {
-            FileBasedIndex.getInstance().getValues(NAME, symbol, scope)
+            FileBasedIndex.getInstance().getValues(RIVERPOD_PROVIDER_INDEX_NAME, symbol, scope)
         }.orEmpty()
         if (values.isEmpty()) {
             return null
