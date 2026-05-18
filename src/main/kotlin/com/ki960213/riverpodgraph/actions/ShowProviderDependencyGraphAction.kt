@@ -159,11 +159,12 @@ class ShowProviderDependencyGraphAction : AnAction() {
         val analysisPaths = (declarationPaths + activeFilesByPath.keys).toCollection(linkedSetOf())
         return analysisPaths.mapNotNull { filePath ->
             val virtualFile = activeFilesByPath[filePath] ?: LocalFileSystem.getInstance().findFileByPath(filePath)
-            val content = virtualFile?.let { sourceText(project, it) }
+            val psiFile = virtualFile?.let { PsiManager.getInstance(project).findFile(it) }
+            val content = psiFile?.text ?: virtualFile?.let { sourceText(project, it) }
                 ?: invocationFile.text.takeIf { filePath == invocationPath }
                 ?: return@mapNotNull null
 
-            ProviderGraphSourceFile(filePath, content)
+            ProviderGraphSourceFile(filePath, content, psiFile ?: invocationFile.takeIf { filePath == invocationPath })
         }
     }
 
@@ -270,7 +271,11 @@ class ShowProviderDependencyGraphAction : AnAction() {
 internal data class ProviderGraphSourceFile(
     val filePath: String,
     val content: String,
-)
+    val psiFile: PsiFile? = null,
+) {
+    /** 텍스트 기반 테스트와 fallback 경로에서 사용하는 기존 생성자입니다. */
+    constructor(filePath: String, content: String) : this(filePath, content, null)
+}
 
 internal fun providerGraphEdgesForSourceFiles(
     sourceFiles: Collection<ProviderGraphSourceFile>,
@@ -279,7 +284,13 @@ internal fun providerGraphEdgesForSourceFiles(
     val sourcesByPath = sourceFiles.distinctBy { it.filePath }.associateBy { it.filePath }
     val providerNames = declarations.mapTo(linkedSetOf()) { it.providerName }
     val extensionDependencies = sourcesByPath.values.flatMap { source ->
-        RefExtensionScanner.scan(
+        source.psiFile?.let { psiFile ->
+            RefExtensionScanner.scan(
+                filePath = source.filePath,
+                file = psiFile,
+                providerNames = providerNames,
+            )
+        } ?: RefExtensionScanner.scan(
             filePath = source.filePath,
             content = source.content,
             providerNames = providerNames,
@@ -289,7 +300,14 @@ internal fun providerGraphEdgesForSourceFiles(
         .mapTo(linkedSetOf()) { it.filePath }
         .flatMap { filePath ->
             val source = sourcesByPath[filePath] ?: return@flatMap emptyList()
-            ProviderDependencyAnalyzer.analyzeFile(
+            source.psiFile?.let { psiFile ->
+                ProviderDependencyAnalyzer.analyzeFile(
+                    filePath = filePath,
+                    file = psiFile,
+                    declarations = declarations,
+                    extensionDependencies = extensionDependencies,
+                )
+            } ?: ProviderDependencyAnalyzer.analyzeFile(
                 filePath = filePath,
                 content = source.content,
                 declarations = declarations,

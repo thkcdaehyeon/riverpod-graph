@@ -1,5 +1,6 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.intellij.psi.PsiFile
 import com.ki960213.riverpodgraph.dart.*
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -75,6 +76,56 @@ object WidgetDependencyAnalyzer {
         val childWidgets = WidgetChildScanner.scan(
             content = content,
             codeMask = codeMask,
+            scanRange = scanRange,
+            widgetName = widgetName,
+        )
+
+        return WidgetDependencyResult(
+            widgetName = widgetName,
+            providerNames = providers,
+            childWidgets = childWidgets,
+        )
+    }
+
+    /**
+     * [caretOffset]으로 선택된 위젯 또는 [file]의 첫 번째 위젯에 대한 의존성을 Dart PSI에서 반환합니다.
+     */
+    fun analyze(
+        filePath: String,
+        file: PsiFile,
+        providerNames: Set<String>,
+        caretOffset: Int? = null,
+        declarations: List<RiverpodProviderDeclaration> = emptyList(),
+        extensionDependencies: List<RefExtensionDependency> = emptyList(),
+    ): WidgetDependencyResult {
+        val content = file.text
+        if (content.isEmpty()) {
+            return WidgetDependencyResult(fallbackWidgetName(filePath), emptyList(), emptyList())
+        }
+
+        val codeMask = dartCodeMask(content)
+        val code = codeOnly(content, codeMask)
+        val widgetContexts = widgetContexts(content, codeMask, code)
+        val selectedWidget = selectWidget(widgetContexts, caretOffset, content, codeMask)
+        val widgetName = selectedWidget?.name ?: fallbackWidgetName(filePath)
+        val scanRange = selectedWidget?.buildRange
+            ?: selectedWidget?.classRange
+            ?: (findBuildRange(content, codeMask, content.indices) ?: content.indices)
+        val scannedProviderNames = (providerNames + declarations.map { it.providerName }).toSet()
+        val providers = ProviderUsageScanner.scan(
+            filePath = filePath,
+            file = file,
+            usageScope = ProviderUsageScope(
+                providerNames = scannedProviderNames,
+                declarations = declarations,
+                extensionDependencies = extensionDependencies,
+            ),
+        )
+            .filter { it.textOffset in scanRange }
+            .map { it.providerName }
+            .distinct()
+        val childWidgets = WidgetChildScanner.scan(
+            file = file,
             scanRange = scanRange,
             widgetName = widgetName,
         )

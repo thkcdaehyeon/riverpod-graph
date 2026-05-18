@@ -1,6 +1,11 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.jetbrains.lang.dart.psi.DartCallExpression
 import com.ki960213.riverpodgraph.dart.codeOnly
+import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 
 /** Widget build 범위 안에서 자식 위젯 생성자 후보와 문맥 마커를 찾습니다. */
@@ -31,6 +36,70 @@ internal object WidgetChildScanner {
             }
             .distinctBy { it.name to it.textOffset }
             .toList()
+    }
+
+    /** 지정 범위의 Dart PSI에서 자식 위젯 생성자 후보를 반환합니다. */
+    fun scan(
+        file: PsiFile,
+        scanRange: IntRange,
+        widgetName: String,
+    ): List<WidgetChildCandidate> {
+        if (scanRange.first > scanRange.last) {
+            return emptyList()
+        }
+
+        val content = file.text
+        val candidates = mutableListOf<WidgetChildCandidate>()
+        var sawDartCall = false
+        file.accept(object : PsiRecursiveElementWalkingVisitor() {
+            override fun visitElement(element: PsiElement) {
+                if (element is DartCallExpression) {
+                    sawDartCall = true
+                    val offset = element.textRange.startOffset
+                    if (offset in scanRange) {
+                        constructorName(element)?.let { name ->
+                            if (name != widgetName && name !in excludedConstructors) {
+                                candidates += WidgetChildCandidate(
+                                    name = name,
+                                    marker = markerFor(content, offset),
+                                    textOffset = offset,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                super.visitElement(element)
+            }
+        })
+
+        if (!sawDartCall) {
+            return scan(
+                content = content,
+                codeMask = dartCodeMask(content),
+                scanRange = scanRange,
+                widgetName = widgetName,
+            )
+        }
+
+        return candidates
+            .sortedBy { it.textOffset }
+            .distinctBy { it.name to it.textOffset }
+    }
+
+    /** Dart 호출식이 위젯 생성자 형태라면 클래스 이름을 반환합니다. */
+    private fun constructorName(expression: DartCallExpression): String? {
+        val callee = expression.expression?.text?.trim().orEmpty()
+        if (callee.isEmpty()) {
+            return null
+        }
+
+        val baseName = callee.substringBefore('.')
+        if (baseName.isEmpty() || !baseName.first().isUpperCase()) {
+            return null
+        }
+
+        return baseName
     }
 
     /** 생성자 호출 주변 컨텍스트를 보고 반복, 콜백, 조건 마커를 결정합니다. */

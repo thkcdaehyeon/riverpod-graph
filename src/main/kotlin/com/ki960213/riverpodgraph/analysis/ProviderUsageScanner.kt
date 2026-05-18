@@ -1,5 +1,10 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.jetbrains.lang.dart.psi.DartCallExpression
+import com.jetbrains.lang.dart.psi.DartReferenceExpression
 import com.ki960213.riverpodgraph.dart.codeOnly
 import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.dart.dartLineOf
@@ -46,6 +51,75 @@ object ProviderUsageScanner {
         declarationOffsetsByProvider = usageScope.declarationOffsetsByProvider(filePath),
         extensionDependencies = usageScope.extensionDependencies,
     )
+
+    /**
+     * Dart PSI에서 [usageScope]에 포함된 Provider 사용 위치를 스캔하고 소스 위치를 반환합니다.
+     */
+    fun scan(
+        filePath: String,
+        file: PsiFile,
+        usageScope: ProviderUsageScope,
+    ): List<RiverpodProviderUsage> {
+        val providerNames = usageScope.providerNames
+        val content = file.text
+        if (providerNames.isEmpty() || content.isEmpty()) {
+            return emptyList()
+        }
+
+        val directCallProvidersBySourceName = directCallProvidersBySourceName(
+            usageScope.directCallSourceNamesByProvider(),
+        )
+        val extensionProvidersByMemberName = extensionProvidersByMemberName(
+            providerNames = providerNames,
+            extensionDependencies = usageScope.extensionDependencies,
+        )
+        val usages = mutableListOf<RiverpodProviderUsage>()
+        var sawDartPsi = false
+
+        file.accept(object : PsiRecursiveElementWalkingVisitor() {
+            override fun visitElement(element: PsiElement) {
+                when (element) {
+                    is DartCallExpression -> {
+                        sawDartPsi = true
+                        element.refCallUsage(
+                            providerNames = providerNames,
+                            filePath = filePath,
+                            content = content,
+                        )?.let { usages += it }
+                        element.overrideUsage(
+                            providerNames = providerNames,
+                            filePath = filePath,
+                            content = content,
+                        )?.let { usages += it }
+                        element.directCallUsages(
+                            providersBySourceName = directCallProvidersBySourceName,
+                            filePath = filePath,
+                            content = content,
+                        ).let { usages += it }
+                    }
+
+                    is DartReferenceExpression -> {
+                        sawDartPsi = true
+                        usages += element.extensionMemberUsages(
+                            providersByMemberName = extensionProvidersByMemberName,
+                            filePath = filePath,
+                            content = content,
+                        )
+                    }
+                }
+
+                super.visitElement(element)
+            }
+        })
+
+        if (!sawDartPsi) {
+            return scan(filePath = filePath, content = content, usageScope = usageScope)
+        }
+
+        return usages
+            .sortedBy { it.textOffset }
+            .distinctBy { Triple(it.providerName, it.textOffset, it.kind) }
+    }
 
     /**
      * 계산된 usage 문맥으로 Provider 사용 위치를 스캔합니다.
@@ -245,6 +319,183 @@ object ProviderUsageScanner {
         else -> RiverpodUsageKind.READ
     }
 
+    /** Dart PSI 호출식이 ref.watch/read/listen 계열 Provider 사용이면 usage로 변환합니다. */
+    private fun DartCallExpression.refCallUsage(
+        providerNames: Set<String>,
+        filePath: String,
+        content: String,
+    ): RiverpodProviderUsage? {
+        val methodName = expression?.text?.callMemberName() ?: return null
+        if (methodName !in REF_METHOD_NAMES) {
+            return null
+        }
+
+        val provider = firstArgumentProvider(providerNames) ?: return null
+        return usage(
+            providerName = provider.name,
+            kind = modifierKind(provider.argumentText, provider.localOffset + provider.name.length)
+                ?: refMethodKind(methodName),
+            filePath = filePath,
+            content = content,
+            offset = provider.textOffset,
+        )
+    }
+
+    /** Dart PSI 호출식이 overrideWith 계열 Provider 사용이면 usage로 변환합니다. */
+    private fun DartCallExpression.overrideUsage(
+        providerNames: Set<String>,
+        filePath: String,
+        content: String,
+    ): RiverpodProviderUsage? {
+        val callee = expression ?: return null
+        val methodName = callee.text.callMemberName()
+        if (!methodName.startsWith("overrideWith")) {
+            return null
+        }
+
+        val provider = providerAtExpressionStart(callee, providerNames) ?: return null
+        return usage(
+            providerName = provider.name,
+            kind = RiverpodUsageKind.OVERRIDE,
+            filePath = filePath,
+            content = content,
+            offset = provider.textOffset,
+        )
+    }
+
+    /** Dart PSI 호출식이 원본 Provider 함수를 직접 호출하면 usage로 변환합니다. */
+    private fun DartCallExpression.directCallUsages(
+        providersBySourceName: Map<String, Set<String>>,
+        filePath: String,
+        content: String,
+    ): List<RiverpodProviderUsage> {
+        val callee = expression ?: return emptyList()
+        val sourceName = callee.text.trim()
+        if (sourceName.isEmpty() || "." in sourceName) {
+            return emptyList()
+        }
+
+        return providersBySourceName[sourceName].orEmpty().map { providerName ->
+            usage(
+                providerName = providerName,
+                kind = RiverpodUsageKind.DIRECT_CALL,
+                filePath = filePath,
+                content = content,
+                offset = callee.textRange.startOffset,
+            )
+        }
+    }
+
+    /** Dart PSI 참조식이 Ref 확장 멤버 사용이면 해당 멤버가 숨긴 Provider usage로 변환합니다. */
+    private fun DartReferenceExpression.extensionMemberUsages(
+        providersByMemberName: Map<String, Set<String>>,
+        filePath: String,
+        content: String,
+    ): List<RiverpodProviderUsage> {
+        val member = lastIdentifier(text) ?: return emptyList()
+        val providerNames = providersByMemberName[member.name].orEmpty()
+        if (providerNames.isEmpty()) {
+            return emptyList()
+        }
+
+        val textOffset = textRange.startOffset + member.localOffset
+        return providerNames.map { providerName ->
+            usage(
+                providerName = providerName,
+                kind = RiverpodUsageKind.EXTENSION_MEMBER,
+                filePath = filePath,
+                content = content,
+                offset = textOffset,
+                marker = RiverpodMarker.REF_EXTENSION,
+            )
+        }
+    }
+
+    /** 호출식의 첫 번째 인자에서 Provider 심볼과 실제 파일 오프셋을 찾습니다. */
+    private fun DartCallExpression.firstArgumentProvider(providerNames: Set<String>): ProviderAt? {
+        val firstArgument = arguments?.argumentList?.expressionList?.firstOrNull() ?: return null
+        return providerAtExpressionStart(firstArgument, providerNames)
+    }
+
+    /** 표현식 시작 위치의 Provider 심볼과 실제 파일 오프셋을 찾습니다. */
+    private fun providerAtExpressionStart(
+        expression: PsiElement,
+        providerNames: Set<String>,
+    ): ProviderAt? {
+        val text = expression.text
+        val localOffset = text.indexOfFirst { !it.isWhitespace() }
+        if (localOffset < 0) {
+            return null
+        }
+
+        val providerName = providerNames
+            .sortedByDescending { it.length }
+            .firstOrNull { providerName ->
+                text.startsWith(providerName, localOffset) &&
+                        isIdentifierBoundary(text, localOffset + providerName.length)
+            } ?: return null
+
+        return ProviderAt(
+            name = providerName,
+            textOffset = expression.textRange.startOffset + localOffset,
+            argumentText = text,
+            localOffset = localOffset,
+        )
+    }
+
+    /** `ref.watch` 같은 호출식 텍스트에서 실제 호출 멤버 이름만 추출합니다. */
+    private fun String.callMemberName(): String =
+        trim().substringAfterLast('.').takeWhile { isDartIdentifierPart(it) }
+
+    /** 참조식의 마지막 식별자와 참조식 안의 상대 오프셋을 반환합니다. */
+    private fun lastIdentifier(text: String): LocalIdentifier? {
+        var end = text.length
+        while (end > 0 && !isDartIdentifierPart(text[end - 1])) {
+            end--
+        }
+        if (end <= 0) return null
+
+        var start = end - 1
+        while (start > 0 && isDartIdentifierPart(text[start - 1])) {
+            start--
+        }
+
+        return LocalIdentifier(
+            name = text.substring(start, end),
+            localOffset = start,
+        )
+    }
+
+    /** [offset] 위치가 식별자 경계인지 확인합니다. */
+    private fun isIdentifierBoundary(text: String, offset: Int): Boolean =
+        offset >= text.length || !isDartIdentifierPart(text[offset])
+
+    /** 직접 호출 가능한 원본 이름에서 Provider 이름으로 가는 역방향 lookup을 만듭니다. */
+    private fun directCallProvidersBySourceName(
+        sourceNamesByProvider: Map<String, Set<String>>,
+    ): Map<String, Set<String>> =
+        sourceNamesByProvider
+            .flatMap { (providerName, sourceNames) ->
+                sourceNames.map { sourceName -> sourceName to providerName }
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, providerNames) -> providerNames.toSet() }
+
+    /** Ref 확장 멤버 이름에서 그 멤버가 숨긴 Provider 이름으로 가는 lookup을 만듭니다. */
+    private fun extensionProvidersByMemberName(
+        providerNames: Set<String>,
+        extensionDependencies: List<RefExtensionDependency>,
+    ): Map<String, Set<String>> =
+        extensionDependencies
+            .flatMap { dependency ->
+                val memberName = dependency.memberId.substringAfterLast('.')
+                dependency.providerNames
+                    .filter { providerName -> providerName in providerNames }
+                    .map { providerName -> memberName to providerName }
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, providerNames) -> providerNames.toSet() }
+
     /** 직접 호출 후보 앞의 텍스트가 함수나 변수 선언부처럼 보이는지 판별합니다. */
     private fun isLikelyDeclarationPrefix(code: String, offset: Int): Boolean {
         val prefix = annotationLineRegex.replace(declarationLookbackPrefix(code, offset), " ").trim()
@@ -322,6 +573,19 @@ object ProviderUsageScanner {
     private val declarationPrefixRegex = Regex("""(?:[A-Za-z_$][A-Za-z0-9_$]*|[<>\[\],.?]|\s)+""")
     private val annotationLineRegex = Regex($$"""(?m)^\s*@[_$A-Za-z][_$A-Za-z0-9]*(?:\([^\n]*\))?\s*$""")
     private val whitespaceRegex = Regex("""\s+""")
+    private val REF_METHOD_NAMES = setOf("watch", "read", "listen", "invalidate", "refresh")
+
+    private data class ProviderAt(
+        val name: String,
+        val textOffset: Int,
+        val argumentText: String,
+        val localOffset: Int,
+    )
+
+    private data class LocalIdentifier(
+        val name: String,
+        val localOffset: Int,
+    )
 }
 
 /** 프로바이더별 직접 호출 가능한 원본 선언 이름 목록을 반환합니다. */

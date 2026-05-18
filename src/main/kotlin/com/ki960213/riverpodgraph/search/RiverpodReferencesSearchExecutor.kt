@@ -67,7 +67,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
 
             val usages = ProviderUsageScanner.scan(
                 filePath = file.path,
-                content = text,
+                file = psiFile,
                 usageScope = ProviderUsageScope(
                     providerNames = setOf(providerTarget.providerName),
                     declarations = providerTarget.declarations,
@@ -161,7 +161,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
 
             dependencies += RefExtensionScanner.scan(
                 filePath = file.path,
-                content = text,
+                file = psiFile,
                 providerNames = setOf(providerTarget.providerName),
             )
         }

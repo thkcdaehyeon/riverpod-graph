@@ -1,5 +1,6 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.intellij.psi.PsiFile
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -55,6 +56,68 @@ object ProviderDependencyAnalyzer {
                 ProviderUsageScanner.scan(
                     filePath = filePath,
                     content = content,
+                    usageScope = usageScope.limitedTo(providerNames),
+                ).filter { it.textOffset in scanRange }
+                    .map { usage ->
+                        RiverpodDependencyEdge(
+                            fromProvider = declaration.providerName,
+                            toProvider = usage.providerName,
+                            usageKind = usage.kind,
+                            marker = usage.marker,
+                        )
+                    }
+            }
+            .distinct()
+    }
+
+    /**
+     * [filePath]에 선언된 프로바이더가 소유한 의존성을 Dart PSI에서 분석합니다.
+     */
+    fun analyzeFile(
+        filePath: String,
+        file: PsiFile,
+        declarations: List<RiverpodProviderDeclaration>,
+    ): List<RiverpodDependencyEdge> = analyzeFile(
+        filePath = filePath,
+        file = file,
+        declarations = declarations,
+        extensionDependencies = null,
+    )
+
+    /**
+     * [filePath]에 선언된 프로바이더가 소유한 의존성을 외부 Ref 확장 문맥까지 포함해 Dart PSI에서 분석합니다.
+     */
+    fun analyzeFile(
+        filePath: String,
+        file: PsiFile,
+        declarations: List<RiverpodProviderDeclaration>,
+        extensionDependencies: List<RefExtensionDependency>?,
+    ): List<RiverpodDependencyEdge> {
+        val providers = declarations.map { it.providerName }.toSet()
+        val content = file.text
+        if (providers.isEmpty() || content.isEmpty()) {
+            return emptyList()
+        }
+
+        val resolvedExtensionDependencies = extensionDependencies ?: RefExtensionScanner.scan(
+            filePath = filePath,
+            file = file,
+            providerNames = providers,
+        )
+        val usageScope = ProviderUsageScope(
+            providerNames = providers,
+            declarations = declarations,
+            extensionDependencies = resolvedExtensionDependencies,
+        )
+
+        return declarations
+            .filter { it.filePath == filePath && it.textOffset in content.indices }
+            .flatMap { declaration ->
+                val scanRange = declaration.sourceRange(content.length)
+                val providerNames = providers - declaration.providerName
+                ProviderUsageScanner.scan(
+                    filePath = filePath,
+                    file = file,
                     usageScope = usageScope.limitedTo(providerNames),
                 ).filter { it.textOffset in scanRange }
                     .map { usage ->

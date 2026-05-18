@@ -1,5 +1,13 @@
 package com.ki960213.riverpodgraph.analysis
 
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.util.PsiTreeUtil
+import com.jetbrains.lang.dart.psi.DartExtensionDeclaration
+import com.jetbrains.lang.dart.psi.DartGetterDeclaration
+import com.jetbrains.lang.dart.psi.DartMethodDeclaration
+import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 import com.ki960213.riverpodgraph.dart.codeOnly
 import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.dart.findMatchingPair
@@ -72,6 +80,156 @@ object RefExtensionScanner {
             .sortedBy { it.textOffset }
             .distinctBy { Triple(it.memberId, it.filePath, it.textOffset) }
     }
+
+    /**
+     * [providerNames]의 프로바이더를 읽는 Ref 확장 멤버를 Dart PSI에서 스캔합니다.
+     */
+    fun scan(
+        filePath: String,
+        file: PsiFile,
+        providerNames: Set<String>,
+    ): List<RefExtensionDependency> {
+        if (providerNames.isEmpty() || file.text.isEmpty()) {
+            return emptyList()
+        }
+
+        val dependencies = mutableListOf<RefExtensionDependency>()
+        var sawDartExtension = false
+        file.accept(object : PsiRecursiveElementWalkingVisitor() {
+            override fun visitElement(element: PsiElement) {
+                if (element is DartExtensionDeclaration) {
+                    sawDartExtension = true
+                    val receiverType = normalizeReceiverType(element.type?.text ?: "")
+                    if (isRefReceiver(receiverType)) {
+                        dependencies += extensionDependencies(
+                            filePath = filePath,
+                            file = file,
+                            extension = element,
+                            receiverType = receiverType,
+                            providerNames = providerNames,
+                        )
+                    }
+                }
+
+                super.visitElement(element)
+            }
+        })
+
+        if (!sawDartExtension) {
+            return scan(filePath = filePath, content = file.text, providerNames = providerNames)
+        }
+
+        return dependencies
+            .sortedBy { it.textOffset }
+            .distinctBy { Triple(it.memberId, it.filePath, it.textOffset) }
+    }
+
+    /** PSI 확장 선언에서 getter와 method 멤버별 Provider 의존성을 수집합니다. */
+    private fun extensionDependencies(
+        filePath: String,
+        file: PsiFile,
+        extension: DartExtensionDeclaration,
+        receiverType: String,
+        providerNames: Set<String>,
+    ): List<RefExtensionDependency> {
+        val extensionName = extensionName(extension, receiverType)
+        val dependencies = mutableListOf<RefExtensionDependency>()
+        extension.classBody?.accept(object : PsiRecursiveElementWalkingVisitor() {
+            override fun visitElement(element: PsiElement) {
+                when (element) {
+                    is DartGetterDeclaration -> if (element.enclosingExtension() == extension) {
+                        memberDependency(
+                            filePath = filePath,
+                            file = file,
+                            extensionName = extensionName,
+                            receiverType = receiverType,
+                            member = element,
+                            memberName = element.componentName?.text,
+                            providerNames = providerNames,
+                        )?.let { dependencies += it }
+                    }
+
+                    is DartMethodDeclaration -> if (element.enclosingExtension() == extension) {
+                        memberDependency(
+                            filePath = filePath,
+                            file = file,
+                            extensionName = extensionName,
+                            receiverType = receiverType,
+                            member = element,
+                            memberName = element.componentName?.text,
+                            providerNames = providerNames,
+                        )?.let { dependencies += it }
+                    }
+                }
+
+                super.visitElement(element)
+            }
+        })
+
+        return dependencies
+    }
+
+    /** PSI 확장 멤버의 본문에 포함된 Provider usage를 확장 의존성으로 변환합니다. */
+    private fun memberDependency(
+        filePath: String,
+        file: PsiFile,
+        extensionName: String,
+        receiverType: String,
+        member: PsiElement,
+        memberName: String?,
+        providerNames: Set<String>,
+    ): RefExtensionDependency? {
+        if (memberName.isNullOrEmpty()) {
+            return null
+        }
+
+        val memberRange = member.textRange
+        val providerUsages = ProviderUsageScanner.scan(
+            filePath = filePath,
+            file = file,
+            usageScope = ProviderUsageScope(providerNames = providerNames),
+        )
+            .filter { usage -> usage.textOffset in memberRange.startOffset until memberRange.endOffset }
+            .filter { usage -> usage.kind != RiverpodUsageKind.EXTENSION_MEMBER }
+        if (providerUsages.isEmpty()) {
+            return null
+        }
+
+        return RefExtensionDependency(
+            memberId = "$extensionName.$memberName",
+            receiverType = receiverType,
+            providerNames = providerUsages.map { it.providerName }.distinct(),
+            filePath = filePath,
+            textOffset = member.nameOffset(),
+            providerOffsetsByProvider = providerUsages
+                .groupBy({ it.providerName }, { it.textOffset })
+                .mapValues { (_, offsets) -> offsets.distinct() },
+        )
+    }
+
+    /** 확장 선언의 이름을 추출하고, 이름 없는 확장은 receiver 타입 기반 ID를 사용합니다. */
+    private fun extensionName(extension: DartExtensionDeclaration, receiverType: String): String {
+        val header = extension.text.substringBefore("{")
+        val match = extensionHeaderRegex.find(header)
+        return match?.groups?.get(1)?.value
+            ?.takeIf { it.isNotEmpty() }
+            ?: receiverType.memberIdPrefix()
+    }
+
+    /** 멤버 선언 이름의 파일 오프셋을 반환합니다. */
+    private fun PsiElement.nameOffset(): Int {
+        val componentName = when (this) {
+            is DartGetterDeclaration -> componentName
+            is DartMethodDeclaration -> componentName
+            else -> null
+        }
+
+        return componentName?.textRange?.startOffset ?: textRange.startOffset
+    }
+
+    /** 현재 멤버가 직접 속한 Dart 확장 선언을 반환합니다. */
+    private fun PsiElement.enclosingExtension(): DartExtensionDeclaration? =
+        PsiTreeUtil.getParentOfType(this, DartExtensionDeclaration::class.java)
 
     /** 확장 본문을 멤버 단위로 나누고 각 멤버의 프로바이더 의존성을 수집합니다. */
     private fun memberDependencies(
@@ -368,6 +526,9 @@ object RefExtensionScanner {
 
     private val extensionRegex = Regex(
         $$"""\bextension(?:\s+([_$A-Za-z][_$A-Za-z0-9]*)(?:\s*<[^{};]*>)?|\s*<[^{};]*>)?\s+on\s+((?:[_$A-Za-z][_$A-Za-z0-9]*\s*\.\s*)*[_$A-Za-z][_$A-Za-z0-9]*(?:\s*<[^{};]*>)?\s*\??)\s*\{""",
+    )
+    private val extensionHeaderRegex = Regex(
+        $$"""\bextension(?:\s+([_$A-Za-z][_$A-Za-z0-9]*)(?:\s*<[^{};]*>)?|\s*<[^{};]*>)?\s+on\b""",
     )
     private val getterNameRegex = Regex($$"""\bget\s+([_$A-Za-z][_$A-Za-z0-9]*)\s*$""")
     private val methodNameRegex = Regex(

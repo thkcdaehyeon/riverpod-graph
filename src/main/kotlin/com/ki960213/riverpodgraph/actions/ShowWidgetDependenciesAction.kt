@@ -97,7 +97,7 @@ class ShowWidgetDependenciesAction : AnAction() {
 
         WidgetDependencyAnalyzer.analyze(
             filePath = filePath,
-            content = content,
+            file = file,
             providerNames = providerNames,
             caretOffset = caretOffset,
             declarations = declarations,
@@ -129,7 +129,7 @@ class ShowWidgetDependenciesAction : AnAction() {
                 } else {
                     RefExtensionScanner.scan(
                         filePath = file.path,
-                        content = text,
+                        file = psiFile,
                         providerNames = providerNames,
                     ).asSequence()
                 }
