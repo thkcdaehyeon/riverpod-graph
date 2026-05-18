@@ -28,6 +28,7 @@ class RiverpodAnnotationParserTest : StringSpec({
         (declaration.isPrivate) shouldBe false
         (declaration.filePath) shouldBe "lib/user.dart"
         (declaration.textOffset) shouldBe content.indexOf("user(Ref")
+        (declaration.textEndOffset) shouldBe content.lastIndexOf(";") + 1
         (declaration.line) shouldBe 5
     }
 
@@ -64,6 +65,7 @@ class RiverpodAnnotationParserTest : StringSpec({
         (declaration.isPrivate) shouldBe false
         (declaration.filePath) shouldBe "lib/session.dart"
         (declaration.textOffset) shouldBe content.indexOf("SessionController")
+        (declaration.textEndOffset) shouldBe content.length
         (declaration.line) shouldBe 2
     }
 

@@ -5,7 +5,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.platform.util.progress.reportRawProgress
-import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.content.ContentFactory
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
@@ -26,26 +25,21 @@ class RiverpodToolWindowFactory : ToolWindowFactory {
             return
         }
 
-        val providersPanel = ProvidersPanel()
-
-        val tabs = JBTabbedPane().apply {
-            addTab("Providers", providersPanel)
-            addTab("Dependencies", DependencyGraphPanel())
-        }
+        val toolWindowContent = RiverpodToolWindowContent()
         val content = ContentFactory.getInstance().createContent(
-            tabs,
+            toolWindowContent.component,
             "",
             false,
         )
         toolWindow.contentManager.addContent(content)
-        loadProvidersInBackground(project, providersPanel)
+        loadProvidersInBackground(project, toolWindowContent)
     }
 
 }
 
 @Suppress("UnstableApiUsage")
 /** 백그라운드 작업에서 프로바이더 인덱스를 읽어 프로바이더 패널에 반영합니다. */
-private fun loadProvidersInBackground(project: Project, providersPanel: ProvidersPanel) {
+private fun loadProvidersInBackground(project: Project, toolWindowContent: RiverpodToolWindowContent) {
     project.launchRiverpodBackgroundTask("Load Riverpod Providers") {
         val providers = reportRawProgress { reporter ->
             reporter.text("Loading Riverpod providers")
@@ -55,7 +49,7 @@ private fun loadProvidersInBackground(project: Project, providersPanel: Provider
         }
         withContext(Dispatchers.EDT) {
             if (!project.isDisposed) {
-                providersPanel.setProviders(providers)
+                toolWindowContent.setProviders(providers)
             }
         }
     }

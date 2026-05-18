@@ -49,4 +49,25 @@ class DartCodeTest : StringSpec({
 
         findMatchingPair(content, codeMask, content.indexOf('('), '(', ')') shouldBe content.lastIndexOf(')')
     }
+
+    "줄 번호와 Dart 식별자 범위를 offset 기준으로 계산한다" {
+        val content = "first\nsecondName();\nthird"
+        val codeMask = dartCodeMask(content)
+        val end = content.indexOf("();") - 1
+
+        dartLineOf(content, content.indexOf("secondName")) shouldBe 2
+        dartLineOf(content, content.length + 50) shouldBe 3
+        findDartIdentifierStart(content, codeMask, end) shouldBe content.indexOf("secondName")
+        isDartIdentifierPart('$') shouldBe true
+        isDartIdentifierPart('.') shouldBe false
+    }
+
+    "뒤쪽 스캔과 statement 끝 계산은 주석과 문자열을 무시한다" {
+        val content = "final value = call(';' /* ; */);\nnext();"
+        val codeMask = dartCodeMask(content)
+
+        skipIgnorableBack(content, codeMask, content.indexOf("next") - 1) shouldBe content.indexOf("\nnext") - 1
+        dartStatementEnd(content, codeMask, content.indexOf("call")) shouldBe content.indexOf("\nnext")
+        codeSlice(content, codeMask, content.indexOf("call"), content.indexOf(");\n") + 1) shouldBe "call(           )"
+    }
 })

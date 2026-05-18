@@ -39,7 +39,7 @@ class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIn
     override fun getValueExternalizer() = RiverpodProviderIndexValue.Externalizer
 
     /** 현재 인덱스 스키마 버전을 반환합니다. */
-    override fun getVersion(): Int = 3
+    override fun getVersion(): Int = 4
 
     /** 인덱스 값이 파일 내용에서 파생됨을 나타냅니다. */
     override fun dependsOnFileContent(): Boolean = true
@@ -59,7 +59,9 @@ private fun RiverpodProviderDeclaration.toIndexValue(): RiverpodProviderIndexVal
     filePath = filePath,
     textOffset = textOffset,
     line = line,
+    textEndOffset = textEndOffset,
 )
 
 /** Riverpod 프로바이더 선언을 위한 인덱스 식별자입니다. */
-internal val RIVERPOD_PROVIDER_INDEX_NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")
+internal val RIVERPOD_PROVIDER_INDEX_NAME: ID<String, RiverpodProviderIndexValue> =
+    ID.create("com.ki960213.riverpodgraph.provider.index")

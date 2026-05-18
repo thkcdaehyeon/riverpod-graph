@@ -7,6 +7,12 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 
 class RiverpodToolWindowFactoryTest : StringSpec({
+    "도구 창 콘텐츠는 프로바이더와 의존성 탭 구성을 소유한다" {
+        val content = RiverpodToolWindowContent()
+
+        (content.tabTitles()) shouldBe listOf("Providers", "Dependencies")
+    }
+
     "인덱스 값에서 프로바이더 경로와 오프셋으로 중복 제거 후 정렬한다" {
         val declarations = providerDeclarationsFromIndexValues(
             listOf(

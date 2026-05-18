@@ -2,6 +2,8 @@ package com.ki960213.riverpodgraph.analysis
 
 import com.ki960213.riverpodgraph.dart.codeOnly
 import com.ki960213.riverpodgraph.dart.dartCodeMask
+import com.ki960213.riverpodgraph.dart.dartLineOf
+import com.ki960213.riverpodgraph.dart.isDartIdentifierPart
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderUsage
@@ -290,7 +292,7 @@ object ProviderUsageScanner {
         kind = kind,
         filePath = filePath,
         textOffset = offset,
-        line = lineOf(content, offset),
+        line = dartLineOf(content, offset),
         marker = marker,
     )
 
@@ -306,19 +308,11 @@ object ProviderUsageScanner {
     /** [start]에서 시작하는 Dart 식별자 조각의 끝 위치를 찾습니다. */
     private fun identifierEnd(content: String, start: Int): Int {
         var index = start
-        while (index < content.length && isIdentifierPart(content[index])) {
+        while (index < content.length && isDartIdentifierPart(content[index])) {
             index++
         }
         return index
     }
-
-    /** 파일 오프셋을 1부터 시작하는 줄 번호로 변환합니다. */
-    private fun lineOf(content: String, offset: Int): Int =
-        content.substring(0, offset.coerceAtLeast(0).coerceAtMost(content.length)).count { it == '\n' } + 1
-
-    /** Dart 식별자 일부로 허용되는 문자인지 확인합니다. */
-    private fun isIdentifierPart(char: Char): Boolean =
-        char == '_' || char == '$' || char.isLetterOrDigit()
 
     private val DIRECT_CALL_PREFIX_KEYWORDS = setOf("return", "await", "yield", "throw")
     private val EXPRESSION_PREFIX_CHARS =

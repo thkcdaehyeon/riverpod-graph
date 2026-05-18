@@ -57,6 +57,134 @@ internal fun skipIgnorable(content: String, codeMask: BooleanArray, start: Int):
         ?: content.length
 
 /**
+ * 뒤쪽으로 이동하며 공백과 코드가 아닌 문자를 건너뛰고 이전 코드 위치를 찾는다.
+ */
+internal fun skipIgnorableBack(content: String, codeMask: BooleanArray, start: Int): Int {
+    var index = start.coerceAtMost(content.lastIndex)
+    while (index >= 0 && (content[index].isWhitespace() || !codeMask[index])) {
+        index--
+    }
+    return index
+}
+
+/**
+ * Dart 식별자에 사용할 수 있는 문자 범위인지 확인한다.
+ */
+internal fun isDartIdentifierPart(char: Char): Boolean =
+    char == '_' || char == '$' || char.isLetterOrDigit()
+
+/**
+ * 식별자 끝 위치에서 거꾸로 이동해 식별자의 시작 위치를 찾는다.
+ */
+internal fun findDartIdentifierStart(content: String, codeMask: BooleanArray, end: Int): Int {
+    var index = end.coerceAtMost(content.lastIndex)
+    while (index >= 0 && codeMask[index] && isDartIdentifierPart(content[index])) {
+        index--
+    }
+    return index + 1
+}
+
+/**
+ * 코드 영역 안에서 다른 식별자의 일부가 아닌 지정 토큰의 위치를 찾는다.
+ */
+internal fun findCodeIdentifier(
+    content: String,
+    codeMask: BooleanArray,
+    token: String,
+    start: Int,
+    end: Int,
+): Int? {
+    var index = content.indexOf(token, start)
+    while (index != -1 && index < end) {
+        val afterIndex = index + token.length
+        val tokenInCode = (index until afterIndex).all { codeMask[it] }
+        val before = index == 0 || !isDartIdentifierPart(content[index - 1])
+        val after = afterIndex >= content.length || !isDartIdentifierPart(content[afterIndex])
+        if (tokenInCode && before && after) {
+            return index
+        }
+        index = content.indexOf(token, index + 1)
+    }
+
+    return null
+}
+
+/**
+ * 원본 오프셋 범위를 유지한 채 해당 구간의 코드 문자만 남긴다.
+ */
+internal fun codeSlice(content: String, codeMask: BooleanArray, start: Int, end: Int): String =
+    codeOnly(content.substring(start, end), codeMask.sliceArray(start until end))
+
+/**
+ * 지정 범위의 코드 영역에 특정 문자가 포함되어 있는지 확인한다.
+ */
+internal fun containsCodeChar(
+    content: String,
+    codeMask: BooleanArray,
+    start: Int,
+    end: Int,
+    char: Char,
+): Boolean =
+    (start until end).any { codeMask[it] && content[it] == char }
+
+/**
+ * 지정 범위의 코드 영역에 특정 문자열이 포함되어 있는지 확인한다.
+ */
+internal fun containsCodeToken(
+    content: String,
+    codeMask: BooleanArray,
+    start: Int,
+    end: Int,
+    token: String,
+): Boolean =
+    (start..(end - token.length)).any { index ->
+        token.indices.all { offset -> codeMask[index + offset] && content[index + offset] == token[offset] }
+    }
+
+/**
+ * 괄호와 중괄호 깊이를 고려해 현재 표현식 문장의 끝 다음 위치를 찾는다.
+ */
+internal fun dartStatementEnd(
+    content: String,
+    codeMask: BooleanArray,
+    start: Int,
+    limit: Int = content.length,
+): Int {
+    var index = start
+    var parenDepth = 0
+    var bracketDepth = 0
+    var braceDepth = 0
+
+    while (index < limit) {
+        if (!codeMask[index]) {
+            index++
+            continue
+        }
+
+        when (content[index]) {
+            '(' -> parenDepth++
+            ')' -> if (parenDepth > 0) parenDepth--
+            '[' -> bracketDepth++
+            ']' -> if (bracketDepth > 0) bracketDepth--
+            '{' -> braceDepth++
+            '}' -> if (braceDepth > 0) braceDepth--
+            ';' -> if (parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) {
+                return index + 1
+            }
+        }
+        index++
+    }
+
+    return limit
+}
+
+/**
+ * 파일 오프셋을 1부터 시작하는 줄 번호로 변환한다.
+ */
+internal fun dartLineOf(content: String, offset: Int): Int =
+    content.substring(0, offset.coerceAtLeast(0).coerceAtMost(content.length)).count { it == '\n' } + 1
+
+/**
  * Dart 블록 주석의 끝 오프셋을 계산한다.
  *
  * Dart는 블록 주석 중첩을 허용하므로 delimiter depth가 0으로 돌아오는 지점을 끝으로 본다.
@@ -141,9 +269,6 @@ private fun Char.isDartQuote(): Boolean =
     this == '\'' || this == '"'
 
 /** raw 문자열 접두사 판별에 쓰이는 Dart 식별자 문자인지 확인한다. */
-private fun isIdentifierPart(char: Char): Boolean =
-    char == '_' || char == '$' || char.isLetterOrDigit()
-
 // 주석과 문자열처럼 Dart 코드 분석에서 제외할 범위를 규칙 목록으로 선언한다.
 private val ignoredRangeRules = listOf(
     IgnoredRangeRule(
@@ -230,7 +355,7 @@ private data class DartStringLiteral(
             val triple = content.startsWith("$quote$quote$quote", start)
             val raw = start > 0 &&
                     (content[start - 1] == 'r' || content[start - 1] == 'R') &&
-                    (start == 1 || !isIdentifierPart(content[start - 2]))
+                    (start == 1 || !isDartIdentifierPart(content[start - 2]))
 
             return DartStringLiteral(
                 quote = quote,

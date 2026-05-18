@@ -17,12 +17,14 @@ class RiverpodModelsTest : StringSpec({
             filePath = "lib/user.dart",
             textOffset = 0,
             line = 1,
+            textEndOffset = 10,
         )
 
         (declaration.kind) shouldBe RiverpodProviderKind.FUNCTION
         (declaration.returnType) shouldBe "String"
         (declaration.familySignature) shouldBe ""
         (declaration.generatedSuperclassName) shouldBe null
+        (declaration.sourceRange(contentLength = 30)) shouldBe (0 until 10)
     }
 
     "사용과 의존성 간선 마커 기본값은 null이다" {

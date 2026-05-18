@@ -22,6 +22,7 @@ class RiverpodProviderIndexValueTest : StringSpec({
             filePath = "lib/user.dart",
             textOffset = 42,
             line = 7,
+            textEndOffset = 88,
         )
 
         val bytes = ByteArrayOutputStream()

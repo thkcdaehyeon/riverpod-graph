@@ -62,6 +62,38 @@ class ProviderDependencyAnalyzerTest : StringSpec({
         (edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider }) shouldBe listOf("userProvider")
     }
 
+    "프로바이더 선언 span으로 의존성 스캔 범위를 제한한다" {
+        val source = """
+            final inside = ref.watch(userProvider);
+            final outside = ref.watch(lateProvider);
+        """.trimIndent()
+        val declarations = listOf(
+            declaration(
+                sourceName = "profile",
+                providerName = "profileProvider",
+                filePath = "lib/profile.dart",
+                textOffset = 0,
+                textEndOffset = source.indexOf("\nfinal outside"),
+            ),
+            declaration(
+                sourceName = "user",
+                providerName = "userProvider",
+                filePath = "lib/user.dart",
+                textOffset = 0,
+            ),
+            declaration(
+                sourceName = "late",
+                providerName = "lateProvider",
+                filePath = "lib/late.dart",
+                textOffset = 0,
+            ),
+        )
+
+        val edges = ProviderDependencyAnalyzer.analyzeFile("lib/profile.dart", source, declarations)
+
+        (edges.filter { it.fromProvider == "profileProvider" }.map { it.toProvider }) shouldBe listOf("userProvider")
+    }
+
     "ref 확장 멤버를 통한 의존성을 분석한다" {
         val source = """
             import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -125,6 +157,7 @@ private fun declaration(
     providerName: String,
     filePath: String,
     textOffset: Int,
+    textEndOffset: Int? = null,
 ): RiverpodProviderDeclaration = RiverpodProviderDeclaration(
     kind = RiverpodProviderKind.FUNCTION,
     sourceName = sourceName,
@@ -137,4 +170,5 @@ private fun declaration(
     filePath = filePath,
     textOffset = textOffset,
     line = 1,
+    textEndOffset = textEndOffset,
 )

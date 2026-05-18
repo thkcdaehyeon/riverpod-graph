@@ -40,6 +40,9 @@ data class RiverpodProviderIndexValue(
 
     /** 선언이 나타나는 1부터 시작하는 줄 번호입니다. */
     val line: Int,
+
+    /** 선언 본문을 포함한 끝 다음 텍스트 오프셋입니다. */
+    val textEndOffset: Int? = null,
 ) {
     /** 이 인덱스 값을 파서 모델로 다시 변환합니다. */
     fun toDeclaration(): RiverpodProviderDeclaration = RiverpodProviderDeclaration(
@@ -54,6 +57,7 @@ data class RiverpodProviderIndexValue(
         filePath = filePath,
         textOffset = textOffset,
         line = line,
+        textEndOffset = textEndOffset,
     )
 
     /** IntelliJ 저장소를 위해 Riverpod 프로바이더 인덱스 값을 직렬화합니다. */
@@ -72,6 +76,8 @@ data class RiverpodProviderIndexValue(
             out.writeUTF(value.filePath)
             out.writeInt(value.textOffset)
             out.writeInt(value.line)
+            out.writeBoolean(value.textEndOffset != null)
+            value.textEndOffset?.let(out::writeInt)
         }
 
         /** 저장소 스트림에서 인덱스 값을 읽습니다. */
@@ -87,6 +93,7 @@ data class RiverpodProviderIndexValue(
             val filePath = input.readUTF()
             val textOffset = input.readInt()
             val line = input.readInt()
+            val textEndOffset = if (input.readBoolean()) input.readInt() else null
 
             return RiverpodProviderIndexValue(
                 kind = kind,
@@ -100,6 +107,7 @@ data class RiverpodProviderIndexValue(
                 filePath = filePath,
                 textOffset = textOffset,
                 line = line,
+                textEndOffset = textEndOffset,
             )
         }
     }

@@ -9,8 +9,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzer
@@ -18,7 +18,6 @@ import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
 import com.ki960213.riverpodgraph.dart.codeOnly
 import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
-import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import com.ki960213.riverpodgraph.ui.WidgetDependencyDialog
@@ -93,7 +92,8 @@ class ShowWidgetDependenciesAction : AnAction() {
         val declarations = activeScope.providerDeclarationsInReadAction()
         val providerNames = declarations.map { it.providerName }.toSet()
             .ifEmpty { fallbackProviderNames(content) }
-        val extensionDependencies = extensionDependenciesInReadAction(project, activeScope, providerNames, checkCanceled)
+        val extensionDependencies =
+            extensionDependenciesInReadAction(project, activeScope, providerNames, checkCanceled)
 
         WidgetDependencyAnalyzer.analyze(
             filePath = filePath,

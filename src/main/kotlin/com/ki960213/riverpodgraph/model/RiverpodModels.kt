@@ -43,7 +43,20 @@ data class RiverpodProviderDeclaration(
 
     /** 선언이 나타나는 1부터 시작하는 줄 번호입니다. */
     val line: Int,
-)
+
+    /** 선언 본문을 포함한 끝 다음 텍스트 오프셋입니다. */
+    val textEndOffset: Int? = null,
+) {
+    /** 선언이 소유한 소스 범위를 현재 파일 길이에 맞춰 반환합니다. */
+    fun sourceRange(contentLength: Int): IntRange {
+        if (contentLength <= 0 || textOffset !in 0 until contentLength) {
+            return IntRange.EMPTY
+        }
+
+        val end = (textEndOffset ?: contentLength).coerceIn(textOffset + 1, contentLength)
+        return textOffset until end
+    }
+}
 
 /** Riverpod 코드에서 프로바이더를 참조할 수 있는 방식입니다. */
 enum class RiverpodUsageKind {

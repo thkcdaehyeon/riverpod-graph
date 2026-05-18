@@ -1,10 +1,6 @@
 package com.ki960213.riverpodgraph.parser
 
-import com.ki960213.riverpodgraph.dart.codeOnly
-import com.ki960213.riverpodgraph.dart.dartCodeMask
-import com.ki960213.riverpodgraph.dart.findMatchingPair
-import com.ki960213.riverpodgraph.dart.findNextCodeChar
-import com.ki960213.riverpodgraph.dart.skipIgnorable
+import com.ki960213.riverpodgraph.dart.*
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFileName
 import com.ki960213.riverpodgraph.model.RiverpodNaming
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -85,7 +81,8 @@ object RiverpodAnnotationParser {
             isPrivate = className.startsWith("_"),
             filePath = filePath,
             textOffset = classNameGroup.range.first,
-            line = lineOf(content, classNameGroup.range.first),
+            line = dartLineOf(content, classNameGroup.range.first),
+            textEndOffset = classBodyEnd + 1,
         )
     }
 
@@ -98,7 +95,7 @@ object RiverpodAnnotationParser {
     ): MethodSignature? {
         var searchStart = bodyStart
         while (searchStart < bodyEnd) {
-            val buildOffset = findIdentifier(content, codeMask, "build", searchStart, bodyEnd) ?: return null
+            val buildOffset = findCodeIdentifier(content, codeMask, "build", searchStart, bodyEnd) ?: return null
             if (!isAtMemberDepthZero(content, codeMask, bodyStart, buildOffset)) {
                 searchStart = buildOffset + "build".length
                 continue
@@ -115,7 +112,7 @@ object RiverpodAnnotationParser {
                 val parametersEnd = findMatchingPair(content, codeMask, parametersStart, '(', ')') ?: return null
                 val returnTypeStart = previousSignatureBoundary(content, codeMask, bodyStart, buildOffset)
                 if (containsCodeChar(content, codeMask, returnTypeStart, buildOffset, '=') ||
-                    containsCodeArrow(content, codeMask, returnTypeStart, buildOffset)
+                    containsCodeToken(content, codeMask, returnTypeStart, buildOffset, "=>")
                 ) {
                     searchStart = buildOffset + "build".length
                     continue
@@ -157,7 +154,8 @@ object RiverpodAnnotationParser {
             isPrivate = signature.name.startsWith("_"),
             filePath = filePath,
             textOffset = signature.nameStart,
-            line = lineOf(content, signature.nameStart),
+            line = dartLineOf(content, signature.nameStart),
+            textEndOffset = signature.textEndOffset,
         )
     }
 
@@ -198,7 +196,7 @@ object RiverpodAnnotationParser {
             return null
         }
 
-        val nameStart = identifierStart(content, codeMask, nameEnd)
+        val nameStart = findDartIdentifierStart(content, codeMask, nameEnd)
         if (nameStart !in declarationStart..nameEnd) {
             return null
         }
@@ -214,13 +212,39 @@ object RiverpodAnnotationParser {
         }
 
         val parametersEnd = findMatchingPair(content, codeMask, parametersStart, '(', ')') ?: return null
+        val textEndOffset = functionDeclarationEnd(content, codeMask, parametersEnd + 1) ?: return null
         return FunctionSignature(
             name = name,
             nameStart = nameStart,
             parametersStart = parametersStart,
             parametersEnd = parametersEnd,
             returnType = returnType,
+            textEndOffset = textEndOffset,
         )
+    }
+
+    /** 함수 선언의 본문 또는 표현식 끝 다음 오프셋을 찾습니다. */
+    private fun functionDeclarationEnd(content: String, codeMask: BooleanArray, start: Int): Int? {
+        var index = skipIgnorable(content, codeMask, start)
+        while (index < content.length) {
+            if (!codeMask[index]) {
+                index++
+                continue
+            }
+
+            if (content.startsWith("=>", index)) {
+                return dartStatementEnd(content, codeMask, index + 2)
+            }
+            if (content[index] == '{') {
+                return findMatchingPair(content, codeMask, index, '{', '}')?.plus(1)
+            }
+            if (content[index] == ';') {
+                return index + 1
+            }
+            index++
+        }
+
+        return null
     }
 
     /** Riverpod 어노테이션 뒤에 이어지는 추가 Dart 메타데이터를 건너뜁니다. */
@@ -242,7 +266,7 @@ object RiverpodAnnotationParser {
     /** 어노테이션 이름과 점으로 연결된 식별자 구간을 지나 다음 위치를 반환합니다. */
     private fun skipAnnotationName(content: String, codeMask: BooleanArray, start: Int): Int {
         var index = start
-        while (index < content.length && codeMask[index] && (isIdentifierPart(content[index]) || content[index] == '.')) {
+        while (index < content.length && codeMask[index] && (isDartIdentifierPart(content[index]) || content[index] == '.')) {
             index++
         }
         return index
@@ -255,47 +279,6 @@ object RiverpodAnnotationParser {
             index++
         }
         return index
-    }
-
-    /** 뒤쪽으로 이동하며 공백과 코드가 아닌 문자를 건너뛰고 이전 코드 위치를 찾습니다. */
-    private fun skipIgnorableBack(content: String, codeMask: BooleanArray, start: Int): Int {
-        var index = start
-        while (index >= 0 && (content[index].isWhitespace() || !codeMask[index])) {
-            index--
-        }
-        return index
-    }
-
-    /** 식별자 끝 위치에서 거꾸로 이동해 식별자의 시작 위치를 찾습니다. */
-    private fun identifierStart(content: String, codeMask: BooleanArray, end: Int): Int {
-        var index = end
-        while (index >= 0 && codeMask[index] && isIdentifierPart(content[index])) {
-            index--
-        }
-        return index + 1
-    }
-
-    /** 코드 영역 안에서 다른 식별자의 일부가 아닌 지정 토큰의 위치를 찾습니다. */
-    private fun findIdentifier(
-        content: String,
-        codeMask: BooleanArray,
-        token: String,
-        start: Int,
-        end: Int,
-    ): Int? {
-        var index = content.indexOf(token, start)
-        while (index != -1 && index < end) {
-            val afterIndex = index + token.length
-            val tokenInCode = (index until afterIndex).all { codeMask[it] }
-            val before = index == 0 || !isIdentifierPart(content[index - 1])
-            val after = afterIndex >= content.length || !isIdentifierPart(content[afterIndex])
-            if (tokenInCode && before && after) {
-                return index
-            }
-            index = content.indexOf(token, index + 1)
-        }
-
-        return null
     }
 
     /** 반환 타입 추출을 위해 선언 앞쪽의 가장 가까운 시그니처 경계를 찾습니다. */
@@ -331,24 +314,6 @@ object RiverpodAnnotationParser {
         return braceDepth == 0
     }
 
-    /** 지정 범위의 코드 영역에 특정 문자가 포함되어 있는지 확인합니다. */
-    private fun containsCodeChar(
-        content: String,
-        codeMask: BooleanArray,
-        start: Int,
-        end: Int,
-        char: Char,
-    ): Boolean =
-        (start until end).any { codeMask[it] && content[it] == char }
-
-    /** 지정 범위의 코드 영역에 Dart 화살표 함수 기호가 있는지 확인합니다. */
-    private fun containsCodeArrow(content: String, codeMask: BooleanArray, start: Int, end: Int): Boolean =
-        (start until (end - 1)).any { codeMask[it] && codeMask[it + 1] && content[it] == '=' && content[it + 1] == '>' }
-
-    /** 원본 오프셋 범위를 유지한 채 해당 구간의 코드 문자만 남깁니다. */
-    private fun codeSlice(content: String, codeMask: BooleanArray, start: Int, end: Int): String =
-        codeOnly(content.substring(start, end), codeMask.sliceArray(start until end))
-
     /** 타입 문자열에서 어노테이션과 중복 공백을 제거해 비교 가능한 형태로 정리합니다. */
     private fun cleanType(type: String): String =
         type.trim()
@@ -361,14 +326,6 @@ object RiverpodAnnotationParser {
         signature.trim()
             .replace(whitespaceRegex, " ")
 
-    /** 원본 오프셋이 속한 1부터 시작하는 줄 번호를 계산합니다. */
-    private fun lineOf(content: String, offset: Int): Int =
-        content.substring(0, offset).count { it == '\n' } + 1
-
-    /** Dart 식별자에 사용할 수 있는 문자 범위인지 확인합니다. */
-    private fun isIdentifierPart(char: Char): Boolean =
-        char == '_' || char == '$' || char.isLetterOrDigit()
-
     private data class AnnotationEnd(
         val index: Int,
         val codeArgs: String,
@@ -380,6 +337,7 @@ object RiverpodAnnotationParser {
         val parametersStart: Int,
         val parametersEnd: Int,
         val returnType: String,
+        val textEndOffset: Int,
     )
 
     private data class MethodSignature(
