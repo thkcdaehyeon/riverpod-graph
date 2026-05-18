@@ -6,9 +6,12 @@ import com.intellij.util.io.KeyDescriptor
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.parser.RiverpodAnnotationParser
 
+/** Dart 파일의 Riverpod 프로바이더 선언을 저장하는 IntelliJ 파일 기반 인덱스입니다. */
 class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIndexValue>() {
+    /** 인덱스 식별자를 반환합니다. */
     override fun getName(): ID<String, RiverpodProviderIndexValue> = NAME
 
+    /** Dart 파일의 Riverpod 프로바이더 선언에 대한 인덱스 항목을 만듭니다. */
     override fun getIndexer(): DataIndexer<String, RiverpodProviderIndexValue, FileContent> = DataIndexer { input ->
         val path = input.file.path
         if (!path.endsWith(".dart") || path.endsWith(".g.dart")) {
@@ -25,15 +28,23 @@ class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIn
         values
     }
 
+    /** 인덱싱 대상을 생성되지 않은 Dart 소스 파일로 제한합니다. */
     override fun getInputFilter(): FileBasedIndex.InputFilter = FileBasedIndex.InputFilter { file ->
         !file.fileType.isBinary &&
                 file.name.endsWith(".dart") &&
                 !file.name.endsWith(".g.dart")
     }
 
+    /** 인덱싱된 프로바이더 키의 직렬화를 제공합니다. */
     override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE
+
+    /** 인덱싱된 프로바이더 값의 직렬화를 제공합니다. */
     override fun getValueExternalizer() = RiverpodProviderIndexValue.Externalizer
+
+    /** 현재 인덱스 스키마 버전을 반환합니다. */
     override fun getVersion(): Int = 2
+
+    /** 인덱스 값이 파일 내용에서 파생됨을 나타냅니다. */
     override fun dependsOnFileContent(): Boolean = true
 
 }
@@ -52,4 +63,5 @@ private fun RiverpodProviderDeclaration.toIndexValue(): RiverpodProviderIndexVal
     line = line,
 )
 
+/** Riverpod 프로바이더 선언을 위한 인덱스 식별자입니다. */
 val NAME: ID<String, RiverpodProviderIndexValue> = ID.create("com.ki960213.riverpodgraph.provider.index")

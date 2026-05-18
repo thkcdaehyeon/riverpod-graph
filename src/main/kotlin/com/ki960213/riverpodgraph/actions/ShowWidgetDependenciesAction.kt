@@ -27,10 +27,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
+/** 현재 편집기 컨텍스트의 위젯에 대한 프로바이더 의존성을 표시합니다. */
 class ShowWidgetDependenciesAction : AnAction() {
 
+    /** 액션 업데이트를 백그라운드 스레드에서 실행합니다. */
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
+    /** 현재 Dart 파일을 분석하고 위젯 의존성 대화상자를 엽니다. */
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
@@ -63,6 +66,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         }
     }
 
+    /** Riverpod 프로젝트의 활성 Dart 파일에서 이 액션을 활성화합니다. */
     override fun update(e: AnActionEvent) {
         val project = e.project
         val file = e.getData(CommonDataKeys.PSI_FILE)

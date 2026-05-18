@@ -18,10 +18,13 @@ import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** 활성화된 Riverpod 프로젝트에 Riverpod Graph 도구 창을 생성합니다. */
 class RiverpodToolWindowFactory : ToolWindowFactory {
+    /** 이 프로젝트에서 도구 창을 사용할 수 있는지 반환합니다. */
     override suspend fun isApplicableAsync(project: Project): Boolean =
         RiverpodActivationService.getInstance(project).isProjectActive()
 
+    /** 도구 창 탭을 구성하고 색인된 프로바이더 로드를 시작합니다. */
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         if (toolWindow.contentManager.contentCount > 0) {
             return

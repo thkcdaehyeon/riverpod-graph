@@ -5,7 +5,13 @@ import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 
+/**
+ * Dart 파일의 Riverpod 선언과 사용 위치에서 프로바이더 의존성 간선을 만듭니다.
+ */
 object ProviderDependencyAnalyzer {
+    /**
+     * [filePath]에 선언된 프로바이더가 소유한 의존성을 [content]에서 분석합니다.
+     */
     fun analyzeFile(
         filePath: String,
         content: String,
@@ -55,6 +61,9 @@ object ProviderDependencyAnalyzer {
             .distinct()
     }
 
+    /**
+     * 대상 프로바이더에서 원본 프로바이더로 도달할 수 있는 의존성 간선을 표시합니다.
+     */
     fun markCycles(edges: List<RiverpodDependencyEdge>): List<RiverpodDependencyEdge> {
         val adjacency = edges.groupBy({ it.fromProvider }, { it.toProvider })
         return edges.map { edge ->

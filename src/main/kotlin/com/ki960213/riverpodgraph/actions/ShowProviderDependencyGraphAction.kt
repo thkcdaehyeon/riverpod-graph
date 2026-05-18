@@ -32,10 +32,13 @@ import com.ki960213.riverpodgraph.ui.DependencyGraphPanel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** 편집기에서 선택한 Riverpod 프로바이더의 의존성 그래프를 표시합니다. */
 class ShowProviderDependencyGraphAction : AnAction() {
 
+    /** 액션 업데이트를 백그라운드 스레드에서 실행합니다. */
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
+    /** 선택한 프로바이더 그래프를 만들고 Riverpod Graph 도구 창에서 엽니다. */
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
@@ -60,6 +63,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         }
     }
 
+    /** Riverpod 프로바이더 심볼을 사용할 수 있을 때만 이 액션을 활성화합니다. */
     override fun update(e: AnActionEvent) {
         val file = e.getData(CommonDataKeys.PSI_FILE)
         val editor = e.getData(CommonDataKeys.EDITOR)
@@ -296,8 +300,12 @@ internal fun providerGraphEdgesForSourceFiles(
     return ProviderDependencyAnalyzer.markCycles(edges).distinct()
 }
 
+/** 프로바이더 접근 체인을 스캔할 때 Dart 식별자를 찾습니다. */
 val IDENTIFIER_REGEX = Regex($$"""[_$A-Za-z][_$A-Za-z0-9]*""")
+
+/** 기본 프로바이더 심볼로 다시 해석되는 프로바이더 접근 수정자입니다. */
 val PROVIDER_MODIFIERS = setOf("future", "notifier", "select")
 
+/** 문자가 프로바이더 접근 체인 안에 나타날 수 있는지 반환합니다. */
 fun isProviderChainChar(char: Char): Boolean =
     char == '.' || char == '_' || char == '$' || char.isLetterOrDigit() || char.isWhitespace()

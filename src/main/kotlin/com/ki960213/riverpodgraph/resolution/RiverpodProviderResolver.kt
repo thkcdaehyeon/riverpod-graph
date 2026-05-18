@@ -10,7 +10,9 @@ import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 
+/** 인덱싱된 Riverpod 프로바이더 심볼을 선언과 PSI 요소로 해석합니다. */
 class RiverpodProviderResolver(private val project: Project) {
+    /** 지정한 범위에서 프로바이더 심볼의 모든 인덱싱된 선언을 찾습니다. */
     fun findDeclarations(
         symbol: String,
         scope: GlobalSearchScope = GlobalSearchScope.projectScope(project),
@@ -18,6 +20,7 @@ class RiverpodProviderResolver(private val project: Project) {
         findDeclarationsInReadAction(symbol, scope)
     }
 
+    /** 지정한 범위에서 프로바이더 심볼의 첫 번째 인덱싱된 선언을 찾습니다. */
     fun findDeclaration(
         symbol: String,
         scope: GlobalSearchScope = GlobalSearchScope.projectScope(project),
@@ -25,6 +28,7 @@ class RiverpodProviderResolver(private val project: Project) {
         findDeclarationsInReadAction(symbol, scope).firstOrNull()
     }
 
+    /** 프로바이더 심볼의 모든 인덱싱된 원본 선언에 해당하는 PSI 요소를 찾습니다. */
     fun findSourceElements(
         symbol: String,
         scope: GlobalSearchScope = GlobalSearchScope.projectScope(project),
@@ -32,6 +36,7 @@ class RiverpodProviderResolver(private val project: Project) {
         findSourceElementsInReadAction(symbol, scope)
     }
 
+    /** 인덱싱된 프로바이더 원본 선언의 첫 번째 PSI 요소를 찾습니다. */
     fun findSourceElement(
         symbol: String,
         scope: GlobalSearchScope = GlobalSearchScope.projectScope(project),

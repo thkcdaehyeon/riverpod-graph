@@ -13,21 +13,26 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.ki960213.riverpodgraph.platform.cancellableReadAction
 
+/** riverpod_annotation을 사용하는 모듈에 Riverpod 기능을 활성화하는 프로젝트 수준 서비스입니다. */
 @Service(Service.Level.PROJECT)
 class RiverpodActivationService(private val project: Project) {
+    /** 프로젝트 모듈 중 하나라도 riverpod_annotation을 선언하면 true를 반환합니다. */
     fun isProjectActive(): Boolean = readAction {
         ModuleManager.getInstance(project).modules.any(::isModuleActiveInReadAction)
     }
 
+    /** 모듈 콘텐츠 루트에 Riverpod pubspec이 포함되어 있으면 true를 반환합니다. */
     fun isModuleActive(module: Module): Boolean = readAction {
         isModuleActiveInReadAction(module)
     }
 
+    /** PSI 파일이 활성 Riverpod 모듈에 속하면 true를 반환합니다. */
     fun isFileActive(psiFile: PsiFile): Boolean {
         val virtualFile = psiFile.virtualFile ?: return isProjectActive()
         return isFileActive(virtualFile)
     }
 
+    /** 가상 파일이 활성 Riverpod 모듈에 속하면 true를 반환합니다. */
     fun isFileActive(virtualFile: VirtualFile): Boolean = readAction {
         val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return@readAction false
         isModuleActiveInReadAction(module)
@@ -50,7 +55,9 @@ class RiverpodActivationService(private val project: Project) {
         }
     }
 
+    /** 프로젝트 서비스 인스턴스에 접근하는 진입점입니다. */
     companion object {
+        /** 프로젝트의 Riverpod 활성화 서비스를 반환합니다. */
         fun getInstance(project: Project): RiverpodActivationService = project.service()
 
         private fun <T> readAction(action: () -> T): T = cancellableReadAction(action)

@@ -1,15 +1,35 @@
 package com.ki960213.riverpodgraph.analysis
 
+/**
+ * Riverpod Ref 확장 멤버가 읽는 프로바이더를 설명합니다.
+ */
 data class RefExtensionDependency(
+    /** 의존성 소스로 사용되는 정규화된 확장 멤버 이름입니다. */
     val memberId: String,
+
+    /** 확장에 선언된 Dart 수신자 타입입니다. */
     val receiverType: String,
+
+    /** 확장 멤버가 참조하는 프로바이더 목록입니다. */
     val providerNames: List<String>,
+
+    /** 확장 멤버가 포함된 Dart 파일입니다. */
     val filePath: String,
+
+    /** 파일 안에서 확장 멤버 이름의 오프셋입니다. */
     val textOffset: Int,
+
+    /** 프로바이더 이름별로 묶은 참조 프로바이더 오프셋입니다. */
     val providerOffsetsByProvider: Map<String, List<Int>> = emptyMap(),
 )
 
+/**
+ * Ref 확장 멤버 뒤에 숨겨진 Riverpod 프로바이더 의존성을 찾습니다.
+ */
 object RefExtensionScanner {
+    /**
+     * [providerNames]의 프로바이더를 읽는 Ref 확장 멤버를 [content]에서 스캔합니다.
+     */
     fun scan(
         filePath: String,
         content: String,

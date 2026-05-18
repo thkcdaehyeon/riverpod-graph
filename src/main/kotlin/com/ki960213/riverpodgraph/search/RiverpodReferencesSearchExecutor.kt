@@ -22,7 +22,9 @@ import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.index.NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 
+/** Dart 파일에서 인덱싱된 Riverpod 프로바이더 참조를 검색합니다. */
 class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>(true) {
+    /** IntelliJ 참조 검색 쿼리에 Riverpod 프로바이더 사용 위치를 내보냅니다. */
     override fun processQuery(
         queryParameters: ReferencesSearch.SearchParameters,
         consumer: Processor<in PsiReference>

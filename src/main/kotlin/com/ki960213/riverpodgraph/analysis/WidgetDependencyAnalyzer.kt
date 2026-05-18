@@ -3,19 +3,41 @@ package com.ki960213.riverpodgraph.analysis
 import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 
+/**
+ * 선택된 위젯에서 감지된 프로바이더 및 자식 위젯 의존성입니다.
+ */
 data class WidgetDependencyResult(
+    /** 의존성 스캔 대상으로 선택된 위젯 클래스입니다. */
     val widgetName: String,
+
+    /** 위젯 스캔 범위 안에서 사용된 프로바이더 목록입니다. */
     val providerNames: List<String>,
+
+    /** 스캔 범위 안에서 발견된 자식 위젯 생성자 호출입니다. */
     val childWidgets: List<WidgetChildCandidate>,
 )
 
+/**
+ * 위젯 의존성 분석 중 발견된 자식 위젯 생성자 호출입니다.
+ */
 data class WidgetChildCandidate(
+    /** 위젯 생성자 클래스 이름입니다. */
     val name: String,
+
+    /** 반복문, 콜백, 조건문에 대한 컨텍스트 표시자입니다. */
     val marker: RiverpodMarker?,
+
+    /** 파일 안에서 생성자 호출의 오프셋입니다. */
     val textOffset: Int,
 )
 
+/**
+ * Flutter 위젯에서 Riverpod 프로바이더 사용과 자식 위젯 호출을 분석합니다.
+ */
 object WidgetDependencyAnalyzer {
+    /**
+     * [caretOffset]으로 선택된 위젯 또는 [content]의 첫 번째 위젯에 대한 의존성을 반환합니다.
+     */
     fun analyze(
         filePath: String,
         content: String,

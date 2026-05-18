@@ -1,6 +1,8 @@
 package com.ki960213.riverpodgraph.activation
 
+/** pubspec.yaml 내용에서 Riverpod 의존성을 감지합니다. */
 object PubspecDependencyParser {
+    /** dependencies 또는 dev_dependencies에 riverpod_annotation이 포함되어 있으면 true를 반환합니다. */
     fun hasRiverpodAnnotation(content: String): Boolean {
         var inDependencyBlock = false
         var dependencyEntryIndent: Int? = null

@@ -4,7 +4,13 @@ import com.ki960213.riverpodgraph.model.RiverpodMarker
 import com.ki960213.riverpodgraph.model.RiverpodProviderUsage
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 
+/**
+ * Dart 소스 코드에서 Riverpod 프로바이더 참조를 찾습니다.
+ */
 object ProviderUsageScanner {
+    /**
+     * [content]에서 [providerNames]의 사용 위치를 스캔하고 소스 위치를 반환합니다.
+     */
     fun scan(
         filePath: String,
         content: String,

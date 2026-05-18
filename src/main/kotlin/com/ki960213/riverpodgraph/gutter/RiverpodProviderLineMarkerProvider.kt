@@ -8,7 +8,9 @@ import com.intellij.psi.PsiElement
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import java.util.*
 
+/** 활성 Dart 파일의 Riverpod 프로바이더 어노테이션에 거터 마커를 추가합니다. */
 class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
+    /** Riverpod 어노테이션 요소의 거터 마커를 반환합니다. */
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         if (!isRiverpodAnnotationElement(element)) return null
         val file = element.containingFile ?: return null

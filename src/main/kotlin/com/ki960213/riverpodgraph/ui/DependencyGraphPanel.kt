@@ -13,11 +13,13 @@ import javax.swing.SwingUtilities
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 
+/** 선택된 Riverpod 프로바이더와 그 의존성을 표시하는 Swing 패널입니다. */
 class DependencyGraphPanel : JPanel(BorderLayout()) {
     private val root = DefaultMutableTreeNode("Dependencies")
     private val treeModel = DefaultTreeModel(root)
     private val tree = Tree(treeModel)
 
+    /** 이 패널에 현재 표시 중인 프로바이더 이름입니다. */
     var selectedProvider: String? = null
         private set
 
@@ -25,10 +27,12 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
         add(ScrollPaneFactory.createScrollPane(tree), BorderLayout.CENTER)
     }
 
+    /** 의존성 간선 없이 프로바이더 이름만 표시합니다. */
     fun showProvider(providerName: String) {
         showProviderGraph(providerName, emptyList())
     }
 
+    /** 프로바이더에서 나가는 의존성 간선을 트리에 렌더링합니다. */
     fun showProviderGraph(providerName: String, edges: List<RiverpodDependencyEdge>) {
         val edgeSnapshot = edges.toList()
         if (!SwingUtilities.isEventDispatchThread()) {
@@ -86,7 +90,9 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
         return "${edge.toProvider} [$usageLabel]$markerSuffix"
     }
 
+    /** 도구 창 UI에서 의존성 그래프 패널을 찾고 선택하는 유틸리티입니다. */
     companion object {
+        /** 컴포넌트 트리 안에서 첫 번째 의존성 그래프 패널을 찾습니다. */
         fun findIn(component: Component?): DependencyGraphPanel? = when (component) {
             null -> null
             is DependencyGraphPanel -> component
@@ -98,6 +104,7 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
             else -> null
         }
 
+        /** 대상 의존성 그래프 패널을 포함하는 탭 패널을 찾습니다. */
         fun findTabbedPaneContaining(
             component: Component?,
             target: DependencyGraphPanel? = findIn(component),
@@ -122,6 +129,7 @@ class DependencyGraphPanel : JPanel(BorderLayout()) {
             }
         }
 
+        /** 대상 의존성 그래프 패널이 들어 있는 탭을 선택합니다. */
         fun selectTabContaining(
             component: Component?,
             target: DependencyGraphPanel? = findIn(component),

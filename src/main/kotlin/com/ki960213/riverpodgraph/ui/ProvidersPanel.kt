@@ -9,6 +9,7 @@ import javax.swing.SwingUtilities
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 
+/** 색인된 Riverpod 프로바이더를 소스 파일별로 묶어 보여주는 Swing 패널입니다. */
 class ProvidersPanel : JPanel(BorderLayout()) {
     private val root = DefaultMutableTreeNode("Providers")
     private val treeModel = DefaultTreeModel(root)
@@ -18,6 +19,7 @@ class ProvidersPanel : JPanel(BorderLayout()) {
         add(ScrollPaneFactory.createScrollPane(tree), BorderLayout.CENTER)
     }
 
+    /** 표시 중인 프로바이더 목록을 지정된 선언 목록으로 교체합니다. */
     fun setProviders(declarations: List<RiverpodProviderDeclaration>) {
         val declarationsSnapshot = declarations.toList()
         if (!SwingUtilities.isEventDispatchThread()) {
@@ -60,7 +62,9 @@ class ProvidersPanel : JPanel(BorderLayout()) {
         }
     }
 
+    /** 프로바이더 패널에 표시할 행 문자열을 만드는 헬퍼입니다. */
     companion object {
+        /** 프로바이더 선언을 프로바이더 트리에 표시할 문자열로 포맷합니다. */
         fun providerRow(declaration: RiverpodProviderDeclaration): String {
             val privatePrefix = if (declaration.isPrivate) "private " else ""
             val signature = declaration.familySignature
