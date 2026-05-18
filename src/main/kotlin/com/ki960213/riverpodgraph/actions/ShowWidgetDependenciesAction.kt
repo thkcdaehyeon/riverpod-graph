@@ -6,7 +6,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
-import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
@@ -18,6 +17,7 @@ import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
 import com.ki960213.riverpodgraph.dart.codeOnly
 import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
+import com.ki960213.riverpodgraph.graph.RiverpodGraphService
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import com.ki960213.riverpodgraph.ui.WidgetDependencyDialog
@@ -46,15 +46,8 @@ class ShowWidgetDependenciesAction : AnAction() {
         project.launchRiverpodBackgroundTask("Analyze Riverpod Widget Dependencies") {
             val cancellationContext = coroutineContext
 
-            @Suppress("UnstableApiUsage")
-            val result = reportRawProgress { reporter ->
-                reporter.text("Analyzing Riverpod widget dependencies")
-                reporter.details(file.virtualFile?.path ?: file.name)
-                val result = analyzeWidgetDependencies(project, file, caretOffset) {
-                    cancellationContext.ensureActive()
-                }
-                reporter.fraction(1.0)
-                result
+            val result = analyzeWidgetDependencies(project, file, caretOffset) {
+                cancellationContext.ensureActive()
             } ?: return@launchRiverpodBackgroundTask
             withContext(Dispatchers.EDT) {
                 if (!project.isDisposed) {
@@ -89,7 +82,7 @@ class ShowWidgetDependenciesAction : AnAction() {
         val filePath = file.virtualFile?.path ?: file.name
         val content = file.text
         val activeScope = RiverpodActiveSourceScope.getInstance(project)
-        val declarations = activeScope.providerDeclarationsInReadAction()
+        val declarations = RiverpodGraphService.getInstance(project).providerDeclarationsInReadAction()
         val providerNames = declarations.map { it.providerName }.toSet()
             .ifEmpty { fallbackProviderNames(content) }
         val extensionDependencies =

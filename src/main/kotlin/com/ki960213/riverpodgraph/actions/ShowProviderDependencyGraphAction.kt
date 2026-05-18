@@ -12,7 +12,6 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
@@ -21,6 +20,7 @@ import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzer
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
+import com.ki960213.riverpodgraph.graph.RiverpodGraphService
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
@@ -45,14 +45,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
 
         val declaration = declarationFromContext(e) ?: return
         project.launchRiverpodBackgroundTask("Analyze Riverpod Provider Dependencies") {
-            @Suppress("UnstableApiUsage")
-            val edges = reportRawProgress { reporter ->
-                reporter.text("Analyzing Riverpod provider dependencies")
-                reporter.details(declaration.providerName)
-                val edges = dependencyEdges(project, file, declaration)
-                reporter.fraction(1.0)
-                edges
-            }
+            val edges = dependencyEdges(project, file, declaration)
             withContext(Dispatchers.EDT) {
                 if (!project.isDisposed) {
                     showGraph(project, declaration.providerName, edges)
@@ -125,8 +118,9 @@ class ShowProviderDependencyGraphAction : AnAction() {
             return@smartCancellableReadAction emptyList()
         }
 
-        val activeScope = RiverpodActiveSourceScope.getInstance(project)
-        val declarations = activeScope.providerDeclarationsInReadAction().withDeclaration(declaration)
+        val declarations = RiverpodGraphService.getInstance(project)
+            .providerDeclarationsInReadAction()
+            .withDeclaration(declaration)
         val sourceFiles = providerSourceFilesInReadAction(project, file, declarations)
 
         providerGraphEdgesForSourceFiles(sourceFiles, declarations)

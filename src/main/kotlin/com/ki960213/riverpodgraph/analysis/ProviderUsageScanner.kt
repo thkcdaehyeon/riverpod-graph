@@ -294,6 +294,10 @@ object ProviderUsageScanner {
     /** 프로바이더 이름 뒤의 .notifier, .future, .select 수식자를 사용 종류로 해석합니다. */
     private fun modifierKind(code: String, offset: Int): RiverpodUsageKind? {
         var index = skipWhitespace(code, offset)
+        if (index < code.length && code[index] == '(') {
+            index = skipProviderCallArguments(code, index) ?: return null
+            index = skipWhitespace(code, index)
+        }
         if (index >= code.length || code[index] != '.') {
             return null
         }
@@ -307,6 +311,26 @@ object ProviderUsageScanner {
             "select" -> RiverpodUsageKind.SELECT
             else -> null
         }
+    }
+
+    /** family provider 호출 인자 괄호를 건너뛰고 닫는 괄호 다음 위치를 반환합니다. */
+    private fun skipProviderCallArguments(code: String, start: Int): Int? {
+        var depth = 0
+        var index = start
+        while (index < code.length) {
+            when (code[index]) {
+                '(' -> depth++
+                ')' -> {
+                    depth--
+                    if (depth == 0) {
+                        return index + 1
+                    }
+                }
+            }
+            index++
+        }
+
+        return null
     }
 
     /** ref 메서드 이름을 기본 Riverpod 사용 종류로 매핑합니다. */

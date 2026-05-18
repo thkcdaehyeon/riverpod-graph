@@ -2,6 +2,8 @@ package com.ki960213.riverpodgraph.ui
 
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.treeStructure.Tree
+import com.ki960213.riverpodgraph.graph.RiverpodProviderLoadStatus
+import com.ki960213.riverpodgraph.graph.RiverpodProviderSnapshot
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import java.awt.BorderLayout
 import javax.swing.JPanel
@@ -43,6 +45,23 @@ class ProvidersPanel : JPanel(BorderLayout()) {
         treeModel.reload()
     }
 
+    /** Provider 로딩 상태를 트리에 표시합니다. */
+    fun setSnapshot(snapshot: RiverpodProviderSnapshot) {
+        if (snapshot.status == RiverpodProviderLoadStatus.READY) {
+            setProviders(snapshot.declarations)
+            return
+        }
+
+        setMessage(
+            when (snapshot.status) {
+                RiverpodProviderLoadStatus.INACTIVE -> "No Riverpod package detected"
+                RiverpodProviderLoadStatus.INDEXING -> "Indexing Riverpod providers..."
+                RiverpodProviderLoadStatus.EMPTY -> "No @riverpod providers found"
+                RiverpodProviderLoadStatus.READY -> error("READY snapshot is handled above")
+            },
+        )
+    }
+
     internal fun providerRows(): List<String> {
         if (SwingUtilities.isEventDispatchThread()) {
             return collectProviderRows()
@@ -61,6 +80,18 @@ class ProvidersPanel : JPanel(BorderLayout()) {
         (0 until fileNode.childCount).map { providerIndex ->
             fileNode.getChildAt(providerIndex).toString()
         }
+    }
+
+    /** 상태 메시지 하나로 트리를 교체합니다. */
+    private fun setMessage(message: String) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater { setMessage(message) }
+            return
+        }
+
+        root.removeAllChildren()
+        root.add(DefaultMutableTreeNode(message))
+        treeModel.reload()
     }
 
     /** 프로바이더 패널에 표시할 행 문자열을 만드는 헬퍼입니다. */

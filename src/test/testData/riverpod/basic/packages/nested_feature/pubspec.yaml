@@ -1,0 +1,7 @@
+name: nested_feature
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  riverpod_annotation: ^3.0.0

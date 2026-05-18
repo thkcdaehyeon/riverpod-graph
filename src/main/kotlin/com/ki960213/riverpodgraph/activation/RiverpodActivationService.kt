@@ -39,16 +39,47 @@ class RiverpodActivationService(private val project: Project) {
 
     /** 읽기 액션 안에서 가상 파일이 활성 Riverpod 모듈에 속하는지 반환합니다. */
     internal fun isFileActiveInReadAction(virtualFile: VirtualFile): Boolean {
+        nearestPubspec(virtualFile)?.let { pubspec ->
+            return hasRiverpodAnnotation(pubspec)
+        }
+
         val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return false
         return isModuleActiveInReadAction(module)
     }
 
-    /** 읽기 액션 안에서 모듈 콘텐츠 루트의 pubspec을 검사해 Riverpod 활성 여부를 판단합니다. */
+    /** 읽기 액션 안에서 모듈 콘텐츠 루트와 그 하위 pubspec을 검사해 Riverpod 활성 여부를 판단합니다. */
     private fun isModuleActiveInReadAction(module: Module): Boolean =
-        ModuleRootManager.getInstance(module).contentRoots.any { root ->
-            val pubspec = root.findChild("pubspec.yaml") ?: return@any false
-            hasRiverpodAnnotation(pubspec)
+        ModuleRootManager.getInstance(module).contentRoots.any(::hasRiverpodPubspecAtOrBelow)
+
+    /** 파일 자신 또는 부모 디렉터리에서 가장 가까운 pubspec.yaml을 찾습니다. */
+    private fun nearestPubspec(file: VirtualFile): VirtualFile? {
+        var directory = if (file.isDirectory) file else file.parent
+        while (directory != null) {
+            directory.findChild(PUBSPEC_YAML)?.let { return it }
+            directory = directory.parent
         }
+
+        return null
+    }
+
+    /** 지정 디렉터리와 하위 패키지 중 Riverpod pubspec이 하나라도 있는지 확인합니다. */
+    private fun hasRiverpodPubspecAtOrBelow(root: VirtualFile): Boolean {
+        if (!root.isDirectory) {
+            return false
+        }
+
+        root.findChild(PUBSPEC_YAML)?.let { pubspec ->
+            if (hasRiverpodAnnotation(pubspec)) {
+                return true
+            }
+        }
+
+        return root.children.any { child ->
+            child.isDirectory &&
+                    child.name !in IGNORED_PACKAGE_SCAN_DIRECTORIES &&
+                    hasRiverpodPubspecAtOrBelow(child)
+        }
+    }
 
     /** pubspec 파일 내용을 읽어 riverpod_annotation 의존성이 선언되어 있는지 확인합니다. */
     private fun hasRiverpodAnnotation(pubspec: VirtualFile): Boolean {
@@ -63,6 +94,9 @@ class RiverpodActivationService(private val project: Project) {
 
     /** 프로젝트 서비스 인스턴스에 접근하는 진입점입니다. */
     companion object {
+        private const val PUBSPEC_YAML = "pubspec.yaml"
+        private val IGNORED_PACKAGE_SCAN_DIRECTORIES = setOf(".dart_tool", ".git", "build")
+
         /** 프로젝트의 Riverpod 활성화 서비스를 반환합니다. */
         fun getInstance(project: Project): RiverpodActivationService = project.service()
 

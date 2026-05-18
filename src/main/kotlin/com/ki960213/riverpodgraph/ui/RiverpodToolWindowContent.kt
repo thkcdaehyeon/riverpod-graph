@@ -1,6 +1,7 @@
 package com.ki960213.riverpodgraph.ui
 
 import com.intellij.ui.components.JBTabbedPane
+import com.ki960213.riverpodgraph.graph.RiverpodProviderSnapshot
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import javax.swing.JComponent
 
@@ -20,6 +21,11 @@ internal class RiverpodToolWindowContent(
     /** 표시 중인 Provider 선언을 Providers 탭에 반영합니다. */
     fun setProviders(declarations: List<RiverpodProviderDeclaration>) {
         providersPanel.setProviders(declarations)
+    }
+
+    /** 표시 중인 Provider 상태와 선언을 Providers 탭에 반영합니다. */
+    fun setProviderSnapshot(snapshot: RiverpodProviderSnapshot) {
+        providersPanel.setSnapshot(snapshot)
     }
 
     /** 현재 탭 제목을 순서대로 반환합니다. */

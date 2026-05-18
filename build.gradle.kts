@@ -22,9 +22,10 @@ dependencies {
 
     intellijPlatform {
         intellijIdea("2026.1.1")
-        compatiblePlugins(providers.gradleProperty("platformPlugins").map { value ->
+        plugins(providers.gradleProperty("platformPlugins").map { value ->
             value.split(',').map(String::trim).filter(String::isNotEmpty)
         })
+        compatiblePlugin("com.redhat.devtools.lsp4ij")
         testFramework(TestFrameworkType.Platform)
         pluginVerifier()
         javaCompiler()
@@ -61,6 +62,7 @@ tasks {
 
     test {
         useJUnitPlatform()
+        systemProperty("riverpodgraph.testDataPath", "$projectDir/src/test/testData")
     }
 }
 

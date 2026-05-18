@@ -16,4 +16,12 @@ class BuildConfigurationTest : StringSpec({
         (buildFile.contains("IntelliJPlatformType.IntellijIdeaCommunity")) shouldBe false
         (buildFile.contains("2025.3")) shouldBe false
     }
+
+    "Dart plugin is installed into the test sandbox, not only marked compatible" {
+        val buildFile = Path.of("build.gradle.kts").readUtf8Text()
+
+        (buildFile.contains("plugins(providers.gradleProperty(\"platformPlugins\")")) shouldBe true
+        (buildFile.contains("compatiblePlugins(providers.gradleProperty(\"platformPlugins\")")) shouldBe false
+        (buildFile.contains("compatiblePlugin(\"com.redhat.devtools.lsp4ij\")")) shouldBe true
+    }
 })

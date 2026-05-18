@@ -29,7 +29,7 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
             return null
         }
 
-        val symbol = symbolAt(element, offset) ?: return null
+        val symbol = symbolAt(element, offset) ?: symbolAtFileText(file.text, offset) ?: return null
         if (!isGeneratedRiverpodSymbol(symbol)) {
             return null
         }
@@ -101,6 +101,47 @@ class RiverpodGotoDeclarationHandler : GotoDeclarationHandler {
         return sequenceOf(element, element.parent)
             .filterNotNull().firstNotNullOfOrNull { candidate -> identifierAt(candidate, lookupOffset) }
     }
+
+    /** 실제 Dart PSI가 modifier leaf만 줄 때 파일 텍스트에서 provider 접근 체인을 복원합니다. */
+    private fun symbolAtFileText(content: String, offset: Int): String? {
+        if (content.isEmpty()) return null
+
+        val lookupOffset = (offset - 1).coerceIn(0, content.lastIndex)
+        val span = symbolSpan(content, lookupOffset)
+        if (span.isEmpty()) return null
+
+        val localContent = content.substring(span)
+        val localOffset = lookupOffset - span.first
+        val identifiers = IDENTIFIER_REGEX.findAll(localContent).toList()
+        val identifierIndex = identifiers.indexOfFirst { match -> localOffset in match.range }
+        if (identifierIndex < 0) return null
+
+        val identifier = identifiers[identifierIndex]
+        if (isGeneratedRiverpodSymbol(identifier.value)) {
+            return identifier.value
+        }
+
+        return providerBaseBeforeModifier(localContent, identifiers, identifierIndex)
+    }
+
+    /** provider 접근 체인처럼 보이는 주변 텍스트 범위를 계산합니다. */
+    private fun symbolSpan(content: String, offset: Int): IntRange {
+        var start = offset
+        while (start > 0 && isProviderChainChar(content[start - 1])) {
+            start--
+        }
+
+        var end = offset + 1
+        while (end < content.length && isProviderChainChar(content[end])) {
+            end++
+        }
+
+        return start until end
+    }
+
+    /** provider modifier fallback에서 접근 체인 문자로 인정하는 문자입니다. */
+    private fun isProviderChainChar(char: Char): Boolean =
+        char.isLetterOrDigit() || char == '_' || char == '$' || char == '.'
 
     /** 요소 텍스트 안에서 오프셋에 걸친 식별자 또는 접근 체인의 기본 심볼을 찾습니다. */
     private fun identifierAt(element: PsiElement, offset: Int): String? {
