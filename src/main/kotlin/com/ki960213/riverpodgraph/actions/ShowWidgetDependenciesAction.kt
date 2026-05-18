@@ -9,9 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.intellij.psi.search.FilenameIndex
-import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.util.indexing.FileBasedIndex
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
@@ -20,8 +18,6 @@ import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
 import com.ki960213.riverpodgraph.dart.codeOnly
 import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
-import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
@@ -93,12 +89,11 @@ class ShowWidgetDependenciesAction : AnAction() {
 
         val filePath = file.virtualFile?.path ?: file.name
         val content = file.text
-        val declarations = withAvailableIndex { providerDeclarationsInReadAction(project) }.orEmpty()
+        val activeScope = RiverpodActiveSourceScope.getInstance(project)
+        val declarations = activeScope.providerDeclarationsInReadAction()
         val providerNames = declarations.map { it.providerName }.toSet()
             .ifEmpty { fallbackProviderNames(content) }
-        val extensionDependencies = withAvailableIndex {
-            extensionDependenciesInReadAction(project, providerNames, checkCanceled)
-        } ?: RefExtensionScanner.scan(filePath, content, providerNames)
+        val extensionDependencies = extensionDependenciesInReadAction(project, activeScope, providerNames, checkCanceled)
 
         WidgetDependencyAnalyzer.analyze(
             filePath = filePath,
@@ -110,19 +105,10 @@ class ShowWidgetDependenciesAction : AnAction() {
         )
     }
 
-    /** 파일 기반 인덱스에서 프로젝트의 모든 프로바이더 선언을 읽습니다. */
-    private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
-        val index = FileBasedIndex.getInstance()
-        val scope = GlobalSearchScope.projectScope(project)
-        val values = index.getAllKeys(RIVERPOD_PROVIDER_INDEX_NAME, project)
-            .flatMap { key -> index.getValues(RIVERPOD_PROVIDER_INDEX_NAME, key, scope) }
-
-        return providerDeclarationsFromIndexValues(values)
-    }
-
     /** 프로젝트 Dart 파일에서 ref 확장 멤버가 참조하는 프로바이더 의존성을 수집합니다. */
     private fun extensionDependenciesInReadAction(
         project: Project,
+        activeScope: RiverpodActiveSourceScope,
         providerNames: Set<String>,
         checkCanceled: () -> Unit,
     ): List<RefExtensionDependency> {
@@ -130,12 +116,10 @@ class ShowWidgetDependenciesAction : AnAction() {
             return emptyList()
         }
 
-        val scope = GlobalSearchScope.projectScope(project)
         val psiManager = PsiManager.getInstance(project)
 
-        return FilenameIndex.getAllFilesByExt(project, "dart", scope)
+        return activeScope.activeDartFilesInReadAction()
             .asSequence()
-            .filter { file -> file.isRiverpodDartSourceFile() }
             .flatMap { file ->
                 checkCanceled()
                 val psiFile = psiManager.findFile(file) ?: return@flatMap emptySequence()
@@ -167,19 +151,6 @@ class ShowWidgetDependenciesAction : AnAction() {
         return providerNames.any { providerName ->
             checkCanceled()
             text.contains(providerName)
-        }
-    }
-
-    /** 인덱스가 아직 준비되지 않은 경우 실패 대신 null을 반환합니다. */
-    private fun <T> withAvailableIndex(action: () -> T): T? {
-        return try {
-            action()
-        } catch (exception: IllegalStateException) {
-            if (exception.message?.contains("Index is not created") == true) {
-                null
-            } else {
-                throw exception
-            }
         }
     }
 

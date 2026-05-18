@@ -34,8 +34,13 @@ class RiverpodActivationService(private val project: Project) {
 
     /** 가상 파일이 활성 Riverpod 모듈에 속하면 true를 반환합니다. */
     fun isFileActive(virtualFile: VirtualFile): Boolean = readAction {
-        val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return@readAction false
-        isModuleActiveInReadAction(module)
+        isFileActiveInReadAction(virtualFile)
+    }
+
+    /** 읽기 액션 안에서 가상 파일이 활성 Riverpod 모듈에 속하는지 반환합니다. */
+    internal fun isFileActiveInReadAction(virtualFile: VirtualFile): Boolean {
+        val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return false
+        return isModuleActiveInReadAction(module)
     }
 
     /** 읽기 액션 안에서 모듈 콘텐츠 루트의 pubspec을 검사해 Riverpod 활성 여부를 판단합니다. */

@@ -89,6 +89,12 @@ build 메서드 안에서 Widget(또는 하위 타입) 반환 모든 생성자/�
 
 `pubspec.yaml`에 `riverpod_annotation` 의존이 선언된 모듈에서만 동작. 모듈 단위로 평가. 활성 모듈 0개면 Tool Window 자동 숨김.
 
+### 활성 Riverpod 범위
+
+활성화된 모듈에 속한 생성되지 않은 Dart 소스 파일과 그 안의 Provider 선언/사용만 Riverpod Graph의 관찰 대상이다.
+
+Navigation 리다이렉션, Find Usages, Provider Tool Window, Provider Dependency Graph, Widget Dependency Tree는 모두 이 범위 안의 Provider만 보여준다. 비활성 모듈의 `fooProvider` 같은 동일 이름 심볼은 Riverpod Graph 관점에서 존재하지 않는 것처럼 취급한다.
+
 ## v1 출시 범위 요약
 
 ### 포함

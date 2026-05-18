@@ -27,17 +27,15 @@ object ProviderDependencyAnalyzer {
         }
 
         val codeMask = dartCodeMask(content)
-        val directCallSourceNamesByProvider = declarations
-            .groupBy { it.providerName }
-            .mapValues { (_, declarations) -> declarations.map { it.sourceName }.toSet() }
-        val declarationOffsetsByProvider = declarations
-            .filter { it.filePath == filePath }
-            .groupBy { it.providerName }
-            .mapValues { (_, declarations) -> declarations.map { it.textOffset }.toSet() }
         val extensionDependencies = RefExtensionScanner.scan(
             filePath = filePath,
             content = content,
             providerNames = providers,
+        )
+        val usageScope = ProviderUsageScope(
+            providerNames = providers,
+            declarations = declarations,
+            extensionDependencies = extensionDependencies,
         )
 
         return declarations
@@ -48,10 +46,7 @@ object ProviderDependencyAnalyzer {
                 ProviderUsageScanner.scan(
                     filePath = filePath,
                     content = content,
-                    providerNames = providerNames,
-                    directCallSourceNamesByProvider = directCallSourceNamesByProvider,
-                    declarationOffsetsByProvider = declarationOffsetsByProvider,
-                    extensionDependencies = extensionDependencies,
+                    usageScope = usageScope.limitedTo(providerNames),
                 ).filter { it.textOffset in scanRange }
                     .map { usage ->
                         RiverpodDependencyEdge(

@@ -16,14 +16,10 @@ import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.intellij.psi.search.FilenameIndex
-import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.util.indexing.FileBasedIndex
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzer
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
-import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
@@ -117,22 +113,11 @@ class ShowProviderDependencyGraphAction : AnAction() {
             return@smartCancellableReadAction emptyList()
         }
 
-        val declarations = withAvailableIndex {
-            providerDeclarationsInReadAction(project)
-        }.orEmpty().withDeclaration(declaration)
+        val activeScope = RiverpodActiveSourceScope.getInstance(project)
+        val declarations = activeScope.providerDeclarationsInReadAction().withDeclaration(declaration)
         val sourceFiles = providerSourceFilesInReadAction(project, file, declarations)
 
         providerGraphEdgesForSourceFiles(sourceFiles, declarations)
-    }
-
-    /** 파일 기반 인덱스에서 프로젝트의 모든 프로바이더 선언을 읽습니다. */
-    private fun providerDeclarationsInReadAction(project: Project): List<RiverpodProviderDeclaration> {
-        val index = FileBasedIndex.getInstance()
-        val scope = GlobalSearchScope.projectScope(project)
-        val values = index.getAllKeys(RIVERPOD_PROVIDER_INDEX_NAME, project)
-            .flatMap { key -> index.getValues(RIVERPOD_PROVIDER_INDEX_NAME, key, scope) }
-
-        return providerDeclarationsFromIndexValues(values)
     }
 
     /** 현재 목록에 선택된 선언이 없을 때만 추가합니다. */
@@ -155,13 +140,12 @@ class ShowProviderDependencyGraphAction : AnAction() {
     ): List<ProviderGraphSourceFile> {
         val declarationPaths = declarations.mapTo(linkedSetOf()) { it.filePath }
         val invocationPath = invocationFile.virtualFile?.path ?: invocationFile.name
-        val scope = GlobalSearchScope.projectScope(project)
-        val indexedFilesByPath = withAvailableIndex {
-            FilenameIndex.getAllFilesByExt(project, "dart", scope).associateBy { it.path }
-        }.orEmpty()
+        val activeFilesByPath = RiverpodActiveSourceScope.getInstance(project)
+            .activeDartFilesInReadAction()
+            .associateBy { it.path }
 
         return declarationPaths.mapNotNull { filePath ->
-            val virtualFile = LocalFileSystem.getInstance().findFileByPath(filePath) ?: indexedFilesByPath[filePath]
+            val virtualFile = activeFilesByPath[filePath] ?: LocalFileSystem.getInstance().findFileByPath(filePath)
             val content = virtualFile?.let { sourceText(project, it) }
                 ?: invocationFile.text.takeIf { filePath == invocationPath }
                 ?: return@mapNotNull null

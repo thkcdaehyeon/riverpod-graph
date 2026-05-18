@@ -5,8 +5,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 
@@ -48,9 +48,8 @@ class RiverpodProviderResolver(private val project: Project) {
     private fun findDeclarationsInReadAction(
         symbol: String,
         scope: GlobalSearchScope,
-    ): List<RiverpodProviderDeclaration> = providerDeclarationsFromIndexValues(
-        FileBasedIndex.getInstance().getValues(RIVERPOD_PROVIDER_INDEX_NAME, symbol, scope),
-    )
+    ): List<RiverpodProviderDeclaration> =
+        RiverpodActiveSourceScope.getInstance(project).providerDeclarationsInReadAction(symbol, scope)
 
     /** 인덱싱된 선언 오프셋을 실제 PSI 원본 요소로 변환합니다. */
     private fun findSourceElementsInReadAction(

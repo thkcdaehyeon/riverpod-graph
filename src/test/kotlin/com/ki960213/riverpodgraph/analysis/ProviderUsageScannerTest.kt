@@ -1,6 +1,8 @@
 package com.ki960213.riverpodgraph.analysis
 
 import com.ki960213.riverpodgraph.model.RiverpodMarker
+import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
+import com.ki960213.riverpodgraph.model.RiverpodProviderKind
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -20,12 +22,14 @@ class ProviderUsageScannerTest : StringSpec({
         val usages = ProviderUsageScanner.scan(
             filePath = "lib/widget.dart",
             content = content,
-            providerNames = setOf(
-                "userProvider",
-                "sessionProvider",
-                "settingsProvider",
-                "cacheProvider",
-                "feedProvider",
+            usageScope = ProviderUsageScope(
+                providerNames = setOf(
+                    "userProvider",
+                    "sessionProvider",
+                    "settingsProvider",
+                    "cacheProvider",
+                    "feedProvider",
+                ),
             ),
         )
 
@@ -67,7 +71,7 @@ class ProviderUsageScannerTest : StringSpec({
         val usages = ProviderUsageScanner.scan(
             filePath = "lib/user.dart",
             content = content,
-            providerNames = setOf("userProvider"),
+            usageScope = ProviderUsageScope(providerNames = setOf("userProvider")),
         )
 
         (usages.map { it.kind }) shouldBe listOf(RiverpodUsageKind.DIRECT_CALL)
@@ -83,8 +87,10 @@ class ProviderUsageScannerTest : StringSpec({
         val usages = ProviderUsageScanner.scan(
             filePath = "lib/foo.dart",
             content = content,
-            providerNames = setOf("fooNotifierProvider"),
-            directCallSourceNamesByProvider = mapOf("fooNotifierProvider" to setOf("fooNotifier")),
+            usageScope = ProviderUsageScope(
+                providerNames = setOf("fooNotifierProvider"),
+                declarations = listOf(declaration(sourceName = "fooNotifier", providerName = "fooNotifierProvider")),
+            ),
         )
 
         (usages.map { it.kind }) shouldBe listOf(RiverpodUsageKind.DIRECT_CALL)
@@ -103,8 +109,10 @@ class ProviderUsageScannerTest : StringSpec({
         val usages = ProviderUsageScanner.scan(
             filePath = "lib/user.dart",
             content = content,
-            providerNames = setOf("userProvider"),
-            declarationOffsetsByProvider = mapOf("userProvider" to setOf(content.indexOf("user(Ref"))),
+            usageScope = ProviderUsageScope(
+                providerNames = setOf("userProvider"),
+                declarations = listOf(declaration(textOffset = content.indexOf("user(Ref"))),
+            ),
         )
 
         (usages.map { it.kind }) shouldBe listOf(RiverpodUsageKind.DIRECT_CALL)
@@ -123,12 +131,14 @@ class ProviderUsageScannerTest : StringSpec({
         val usages = ProviderUsageScanner.scan(
             filePath = "lib/generic_widget.dart",
             content = content,
-            providerNames = setOf(
-                "userProvider",
-                "sessionProvider",
-                "settingsProvider",
-                "cacheProvider",
-                "feedProvider",
+            usageScope = ProviderUsageScope(
+                providerNames = setOf(
+                    "userProvider",
+                    "sessionProvider",
+                    "settingsProvider",
+                    "cacheProvider",
+                    "feedProvider",
+                ),
             ),
         )
 
@@ -170,8 +180,10 @@ class ProviderUsageScannerTest : StringSpec({
         val usages = ProviderUsageScanner.scan(
             filePath = "lib/widget.dart",
             content = content,
-            providerNames = setOf("userProvider", "feedProvider"),
-            extensionDependencies = extensionDependencies,
+            usageScope = ProviderUsageScope(
+                providerNames = setOf("userProvider", "feedProvider"),
+                extensionDependencies = extensionDependencies,
+            ),
         )
 
         (usages.map { it.providerName }) shouldBe listOf("userProvider", "feedProvider")
@@ -180,3 +192,22 @@ class ProviderUsageScannerTest : StringSpec({
         (usages.map { it.textOffset }) shouldBe listOf(content.indexOf("currentUser"), content.indexOf("reload"))
     }
 })
+
+private fun declaration(
+    sourceName: String = "user",
+    providerName: String = "userProvider",
+    filePath: String = "lib/user.dart",
+    textOffset: Int = 0,
+): RiverpodProviderDeclaration = RiverpodProviderDeclaration(
+    kind = RiverpodProviderKind.FUNCTION,
+    sourceName = sourceName,
+    providerName = providerName,
+    generatedSuperclassName = null,
+    returnType = "Object",
+    familySignature = "Ref ref",
+    keepAlive = false,
+    isPrivate = false,
+    filePath = filePath,
+    textOffset = textOffset,
+    line = 1,
+)

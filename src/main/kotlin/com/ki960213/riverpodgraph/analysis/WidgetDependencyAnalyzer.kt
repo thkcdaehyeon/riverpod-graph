@@ -67,10 +67,11 @@ object WidgetDependencyAnalyzer {
         val providers = ProviderUsageScanner.scan(
             filePath = filePath,
             content = content,
-            providerNames = scannedProviderNames,
-            directCallSourceNamesByProvider = directCallSourceNamesByProvider(scannedProviderNames, declarations),
-            declarationOffsetsByProvider = declarationOffsetsByProvider(filePath, declarations),
-            extensionDependencies = extensionDependencies,
+            usageScope = ProviderUsageScope(
+                providerNames = scannedProviderNames,
+                declarations = declarations,
+                extensionDependencies = extensionDependencies,
+            ),
         )
             .filter { it.textOffset in scanRange }
             .map { it.providerName }
@@ -203,30 +204,6 @@ object WidgetDependencyAnalyzer {
 
         return 0
     }
-
-    /** 프로바이더별 직접 호출 감지를 위한 원본 함수 이름 목록을 구성합니다. */
-    private fun directCallSourceNamesByProvider(
-        providerNames: Set<String>,
-        declarations: List<RiverpodProviderDeclaration>,
-    ): Map<String, Set<String>> {
-        val declaredNames = declarations
-            .filter { it.providerName in providerNames }
-            .groupBy { it.providerName }
-            .mapValues { (_, declarations) -> declarations.map { it.sourceName }.toSet() }
-
-        return providerNames.associateWith { providerName ->
-            declaredNames[providerName] ?: setOf(providerName.removeSuffix("Provider"))
-        }
-    }
-
-    /** 같은 파일에 선언된 프로바이더 오프셋을 프로바이더 이름별로 묶습니다. */
-    private fun declarationOffsetsByProvider(
-        filePath: String,
-        declarations: List<RiverpodProviderDeclaration>,
-    ): Map<String, Set<Int>> = declarations
-        .filter { it.filePath == filePath }
-        .groupBy { it.providerName }
-        .mapValues { (_, declarations) -> declarations.map { it.textOffset }.toSet() }
 
     /** 위젯 이름 매치가 생성자 호출이 아니라 클래스 선언부인지 확인합니다. */
     private fun isWidgetConstructorDeclaration(code: String, widgetName: String, offset: Int): Boolean {

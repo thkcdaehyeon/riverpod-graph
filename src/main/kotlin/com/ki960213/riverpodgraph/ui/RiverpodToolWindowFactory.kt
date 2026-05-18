@@ -5,16 +5,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.platform.util.progress.reportRawProgress
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.content.ContentFactory
-import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
-import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.providerDeclarationsFromIndexValues
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.platform.launchRiverpodBackgroundTask
-import com.ki960213.riverpodgraph.platform.smartCancellableReadAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -66,11 +62,4 @@ private fun loadProvidersInBackground(project: Project, providersPanel: Provider
 }
 
 internal fun loadProviders(project: Project): List<RiverpodProviderDeclaration> =
-    smartCancellableReadAction(project) {
-        val index = FileBasedIndex.getInstance()
-        val scope = GlobalSearchScope.projectScope(project)
-        val values = index.getAllKeys(RIVERPOD_PROVIDER_INDEX_NAME, project)
-            .flatMap { key -> index.getValues(RIVERPOD_PROVIDER_INDEX_NAME, key, scope) }
-
-        providerDeclarationsFromIndexValues(values)
-    }
+    RiverpodActiveSourceScope.getInstance(project).providerDeclarations()

@@ -3,25 +3,58 @@ package com.ki960213.riverpodgraph.analysis
 import com.ki960213.riverpodgraph.dart.codeOnly
 import com.ki960213.riverpodgraph.dart.dartCodeMask
 import com.ki960213.riverpodgraph.model.RiverpodMarker
+import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderUsage
 import com.ki960213.riverpodgraph.model.RiverpodUsageKind
+
+/**
+ * Provider 사용 스캔에 필요한 Riverpod 선언과 확장 의존성 문맥입니다.
+ */
+data class ProviderUsageScope(
+    /** 사용 위치를 찾을 Provider 이름 집합입니다. */
+    val providerNames: Set<String>,
+
+    /** Provider 원본 선언 메타데이터입니다. 직접 호출 이름과 선언 위치 제외에 사용됩니다. */
+    val declarations: List<RiverpodProviderDeclaration> = emptyList(),
+
+    /** Ref 확장 멤버 뒤에 숨어 있는 Provider 의존성입니다. */
+    val extensionDependencies: List<RefExtensionDependency> = emptyList(),
+) {
+    /** 지정 Provider만 스캔하도록 현재 문맥을 좁힙니다. */
+    fun limitedTo(providerNames: Set<String>): ProviderUsageScope =
+        copy(providerNames = providerNames)
+}
 
 /**
  * Dart 소스 코드에서 Riverpod 프로바이더 참조를 찾습니다.
  */
 object ProviderUsageScanner {
     /**
-     * [content]에서 [providerNames]의 사용 위치를 스캔하고 소스 위치를 반환합니다.
+     * [content]에서 [usageScope]에 포함된 Provider 사용 위치를 스캔하고 소스 위치를 반환합니다.
      */
     fun scan(
         filePath: String,
         content: String,
+        usageScope: ProviderUsageScope,
+    ): List<RiverpodProviderUsage> = scan(
+        filePath = filePath,
+        content = content,
+        providerNames = usageScope.providerNames,
+        directCallSourceNamesByProvider = usageScope.directCallSourceNamesByProvider(),
+        declarationOffsetsByProvider = usageScope.declarationOffsetsByProvider(filePath),
+        extensionDependencies = usageScope.extensionDependencies,
+    )
+
+    /**
+     * 계산된 usage 문맥으로 Provider 사용 위치를 스캔합니다.
+     */
+    private fun scan(
+        filePath: String,
+        content: String,
         providerNames: Set<String>,
-        directCallSourceNamesByProvider: Map<String, Set<String>> = providerNames.associateWith {
-            setOf(it.removeSuffix("Provider"))
-        },
-        declarationOffsetsByProvider: Map<String, Set<Int>> = emptyMap(),
-        extensionDependencies: List<RefExtensionDependency> = emptyList(),
+        directCallSourceNamesByProvider: Map<String, Set<String>>,
+        declarationOffsetsByProvider: Map<String, Set<Int>>,
+        extensionDependencies: List<RefExtensionDependency>,
     ): List<RiverpodProviderUsage> {
         if (providerNames.isEmpty() || content.isEmpty()) {
             return emptyList()
@@ -296,3 +329,22 @@ object ProviderUsageScanner {
     private val annotationLineRegex = Regex($$"""(?m)^\s*@[_$A-Za-z][_$A-Za-z0-9]*(?:\([^\n]*\))?\s*$""")
     private val whitespaceRegex = Regex("""\s+""")
 }
+
+/** 프로바이더별 직접 호출 가능한 원본 선언 이름 목록을 반환합니다. */
+private fun ProviderUsageScope.directCallSourceNamesByProvider(): Map<String, Set<String>> {
+    val declaredNames = declarations
+        .filter { declaration -> declaration.providerName in providerNames }
+        .groupBy { declaration -> declaration.providerName }
+        .mapValues { (_, declarations) -> declarations.mapTo(linkedSetOf()) { it.sourceName } }
+
+    return providerNames.associateWith { providerName ->
+        declaredNames[providerName] ?: setOf(providerName.removeSuffix("Provider"))
+    }
+}
+
+/** 같은 파일 안의 Provider 선언 offset을 프로바이더 이름별로 반환합니다. */
+private fun ProviderUsageScope.declarationOffsetsByProvider(filePath: String): Map<String, Set<Int>> =
+    declarations
+        .filter { declaration -> declaration.filePath == filePath && declaration.providerName in providerNames }
+        .groupBy { declaration -> declaration.providerName }
+        .mapValues { (_, declarations) -> declarations.mapTo(linkedSetOf()) { it.textOffset } }

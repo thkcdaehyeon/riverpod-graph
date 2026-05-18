@@ -76,4 +76,109 @@ class IntelliJApiUsageTest : StringSpec({
 
         offenders.shouldBeEmpty()
     }
+
+    "platform adapters get Riverpod source facts through the active scope module" {
+        val platformAdapters = listOf(
+            Path.of(
+                "src",
+                "main",
+                "kotlin",
+                "com",
+                "ki960213",
+                "riverpodgraph",
+                "actions",
+                "ShowProviderDependencyGraphAction.kt"
+            ),
+            Path.of(
+                "src",
+                "main",
+                "kotlin",
+                "com",
+                "ki960213",
+                "riverpodgraph",
+                "actions",
+                "ShowWidgetDependenciesAction.kt"
+            ),
+            Path.of(
+                "src",
+                "main",
+                "kotlin",
+                "com",
+                "ki960213",
+                "riverpodgraph",
+                "search",
+                "RiverpodReferencesSearchExecutor.kt"
+            ),
+            Path.of("src", "main", "kotlin", "com", "ki960213", "riverpodgraph", "ui", "RiverpodToolWindowFactory.kt"),
+        )
+        val forbiddenSnippets = listOf(
+            "FileBasedIndex.getInstance()",
+            "FilenameIndex.getAllFilesByExt",
+        )
+        val offenders = platformAdapters.flatMap { path ->
+            val source = path.readUtf8Text()
+            forbiddenSnippets
+                .filter { snippet -> source.contains(snippet) }
+                .map { snippet -> "${path.fileName} uses $snippet" }
+        }
+
+        offenders.shouldBeEmpty()
+    }
+
+    "active scope does not leak provider index values into lookup adapters" {
+        val lookupAdapters = listOf(
+            Path.of(
+                "src",
+                "main",
+                "kotlin",
+                "com",
+                "ki960213",
+                "riverpodgraph",
+                "resolution",
+                "RiverpodProviderResolver.kt"
+            ),
+            Path.of(
+                "src",
+                "main",
+                "kotlin",
+                "com",
+                "ki960213",
+                "riverpodgraph",
+                "search",
+                "RiverpodReferencesSearchExecutor.kt"
+            ),
+        )
+        val forbiddenSnippets = listOf(
+            "RiverpodProviderIndexValue",
+            "providerDeclarationsFromIndexValues",
+            "providerIndexValues(",
+        )
+        val offenders = lookupAdapters.flatMap { path ->
+            val source = path.readUtf8Text()
+            forbiddenSnippets
+                .filter { snippet -> source.contains(snippet) }
+                .map { snippet -> "${path.fileName} uses $snippet" }
+        }
+
+        offenders.shouldBeEmpty()
+    }
+
+    "provider usage scope does not expose derived map details" {
+        val source = Path.of(
+            "src",
+            "main",
+            "kotlin",
+            "com",
+            "ki960213",
+            "riverpodgraph",
+            "analysis",
+            "ProviderUsageScanner.kt",
+        ).readUtf8Text()
+        val offenders = listOf(
+            "internal fun directCallSourceNamesByProvider",
+            "internal fun declarationOffsetsByProvider",
+        ).filter { snippet -> source.contains(snippet) }
+
+        offenders.shouldBeEmpty()
+    }
 })

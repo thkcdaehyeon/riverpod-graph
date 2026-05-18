@@ -2,26 +2,22 @@ package com.ki960213.riverpodgraph.search
 
 import com.intellij.openapi.application.QueryExecutorBase
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
-import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.util.Processor
-import com.intellij.util.indexing.FileBasedIndex
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderUsageScanner
+import com.ki960213.riverpodgraph.analysis.ProviderUsageScope
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
-import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
-import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
-import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
+import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 
 /** Dart 파일에서 인덱싱된 Riverpod 프로바이더 참조를 검색합니다. */
 class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>(true) {
@@ -42,15 +38,16 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
             return
         }
 
+        val activeScope = RiverpodActiveSourceScope.getInstance(project)
         val searchScope = queryParameters.effectiveSearchScope
         val indexScope = searchScope as? GlobalSearchScope ?: GlobalSearchScope.projectScope(project)
-        val providerTarget = providerTargetFor(element.text, indexScope) ?: return
+        val providerTarget = providerTargetFor(activeScope, element.text, indexScope) ?: return
         val psiManager = PsiManager.getInstance(project)
-        val extensionDependencies = extensionDependenciesFor(project, psiManager, providerTarget, indexScope)
+        val extensionDependencies = extensionDependenciesFor(activeScope, psiManager, providerTarget, indexScope)
         val extensionDependenciesByFile = extensionDependencies.groupBy { it.filePath }
         val extensionMemberNames = extensionDependencies.mapTo(linkedSetOf()) { it.memberName() }
 
-        for (file in dartFiles(project, searchScope, indexScope)) {
+        for (file in dartFiles(activeScope, searchScope)) {
             ProgressManager.checkCanceled()
             val psiFile = psiManager.findFile(file) ?: continue
             val text = psiFile.text
@@ -72,12 +69,11 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
             val usages = ProviderUsageScanner.scan(
                 filePath = file.path,
                 content = text,
-                providerNames = setOf(providerTarget.providerName),
-                directCallSourceNamesByProvider = mapOf(providerTarget.providerName to providerTarget.directCallSourceNames),
-                declarationOffsetsByProvider = mapOf(
-                    providerTarget.providerName to providerTarget.declarationOffsetsByFile[file.path].orEmpty(),
+                usageScope = ProviderUsageScope(
+                    providerNames = setOf(providerTarget.providerName),
+                    declarations = providerTarget.declarations,
+                    extensionDependencies = extensionDependencies,
                 ),
-                extensionDependencies = extensionDependencies,
             )
             for (usage in usages) {
                 ProgressManager.checkCanceled()
@@ -89,48 +85,40 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
     }
 
     /** 검색할 심볼에 대응하는 프로바이더 이름과 선언 정보를 인덱스에서 구성합니다. */
-    private fun providerTargetFor(symbol: String, scope: GlobalSearchScope): ProviderTarget? {
-        val values = withAvailableIndex {
-            FileBasedIndex.getInstance().getValues(RIVERPOD_PROVIDER_INDEX_NAME, symbol, scope)
-        }.orEmpty()
-        if (values.isEmpty()) {
+    private fun providerTargetFor(
+        activeScope: RiverpodActiveSourceScope,
+        symbol: String,
+        scope: GlobalSearchScope,
+    ): ProviderTarget? {
+        val declarations = withAvailableIndex { activeScope.providerDeclarations(symbol, scope) }.orEmpty()
+        if (declarations.isEmpty()) {
             return null
         }
 
-        val providerName = values.first().providerName
+        val providerName = declarations.first().providerName
         return ProviderTarget(
             providerName = providerName,
-            directCallSourceNames = values.sourceNamesFor(providerName),
-            declarationOffsetsByFile = values.declarationOffsetsByFileFor(providerName),
+            declarations = declarations.filter { declaration -> declaration.providerName == providerName },
         )
     }
 
     /** 검색 범위에 포함된 활성 Riverpod Dart 소스 파일을 나열합니다. */
     private fun dartFiles(
-        project: Project,
+        activeScope: RiverpodActiveSourceScope,
         searchScope: SearchScope,
-        indexScope: GlobalSearchScope,
     ): Sequence<VirtualFile> {
-        val files = when (searchScope) {
-            is LocalSearchScope -> searchScope.scope.asSequence()
-                .mapNotNull { it.containingFile?.virtualFile }
-                .distinct()
-
-            else -> FilenameIndex.getAllFilesByExt(project, "dart", indexScope).asSequence()
-        }
-
-        return files.filter { it.isRiverpodDartSourceFile() }
+        return activeScope.activeDartFiles(searchScope).asSequence()
     }
 
     /** 프로바이더를 감싼 ref 확장 멤버 의존성을 프로젝트 범위에서 수집합니다. */
     private fun extensionDependenciesFor(
-        project: Project,
+        activeScope: RiverpodActiveSourceScope,
         psiManager: PsiManager,
         providerTarget: ProviderTarget,
         indexScope: GlobalSearchScope,
     ): List<RefExtensionDependency> {
         val dependencies = mutableListOf<RefExtensionDependency>()
-        for (file in dartFiles(project, indexScope, indexScope)) {
+        for (file in dartFiles(activeScope, indexScope)) {
             ProgressManager.checkCanceled()
             val psiFile = psiManager.findFile(file) ?: continue
             val text = psiFile.text
@@ -148,17 +136,6 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
         return dependencies.distinct()
     }
 
-    /** 인덱스 값 목록에서 지정 프로바이더의 원본 선언 이름을 모읍니다. */
-    private fun List<RiverpodProviderIndexValue>.sourceNamesFor(providerName: String): Set<String> =
-        filter { it.providerName == providerName }
-            .mapTo(linkedSetOf()) { it.sourceName }
-
-    /** 지정 프로바이더의 선언 오프셋을 파일 경로별로 묶습니다. */
-    private fun List<RiverpodProviderIndexValue>.declarationOffsetsByFileFor(providerName: String): Map<String, Set<Int>> =
-        filter { it.providerName == providerName }
-            .groupBy { it.filePath }
-            .mapValues { (_, values) -> values.mapTo(linkedSetOf()) { it.textOffset } }
-
     /** 파일 텍스트가 직접 사용 또는 확장 멤버 사용 후보인지 빠르게 확인합니다. */
     private fun mayContainUsage(
         text: String,
@@ -171,7 +148,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
     /** 파일 텍스트에 프로바이더 이름이나 직접 호출 가능한 원본 이름이 있는지 확인합니다. */
     private fun mayContainProviderSource(text: String, providerTarget: ProviderTarget): Boolean =
         text.contains(providerTarget.providerName) ||
-                providerTarget.directCallSourceNames.any { text.contains(it) }
+                providerTarget.sourceNames.any { text.contains(it) }
 
     /** 파일 텍스트에 ref 확장 멤버 이름 중 하나가 포함되는지 확인합니다. */
     private fun mayContainExtensionMember(text: String, extensionMemberNames: Set<String>): Boolean {
@@ -234,7 +211,8 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
 
     private data class ProviderTarget(
         val providerName: String,
-        val directCallSourceNames: Set<String>,
-        val declarationOffsetsByFile: Map<String, Set<Int>>,
-    )
+        val declarations: List<RiverpodProviderDeclaration>,
+    ) {
+        val sourceNames: Set<String> = declarations.mapTo(linkedSetOf()) { declaration -> declaration.sourceName }
+    }
 }
