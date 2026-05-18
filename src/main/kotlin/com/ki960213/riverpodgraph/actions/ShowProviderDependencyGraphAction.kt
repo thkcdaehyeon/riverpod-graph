@@ -21,6 +21,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzer
+import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
@@ -42,7 +43,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
-        if (!file.isRelevantDartFile()) return
+        if (!file.isRiverpodDartSourceFile()) return
         if (!RiverpodActivationService.getInstance(project).isFileActive(file)) return
 
         val declaration = declarationFromContext(e) ?: return
@@ -70,7 +71,7 @@ class ShowProviderDependencyGraphAction : AnAction() {
         val element = e.getData(CommonDataKeys.PSI_ELEMENT)
         val project = e.project
         val relevant = project != null &&
-                file?.isRelevantDartFile() == true &&
+                file?.isRiverpodDartSourceFile() == true &&
                 RiverpodActivationService.getInstance(project).isFileActive(file) &&
                 symbolCandidates(file, editor, element).isNotEmpty()
 
@@ -251,12 +252,6 @@ class ShowProviderDependencyGraphAction : AnAction() {
         }
 
         return null
-    }
-
-    private fun PsiFile.isRelevantDartFile(): Boolean {
-        val fileName = virtualFile?.name ?: name
-        if (!fileName.endsWith(".dart")) return false
-        return !fileName.removeSuffix(".dart").contains(".")
     }
 
     private fun <T> withAvailableIndex(action: () -> T): T? {

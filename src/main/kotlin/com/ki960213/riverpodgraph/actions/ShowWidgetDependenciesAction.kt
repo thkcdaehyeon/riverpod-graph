@@ -17,6 +17,7 @@ import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.analysis.WidgetDependencyAnalyzer
 import com.ki960213.riverpodgraph.analysis.WidgetDependencyResult
+import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -37,7 +38,7 @@ class ShowWidgetDependenciesAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
-        if (!file.isRelevantDartFile()) {
+        if (!file.isRiverpodDartSourceFile()) {
             return
         }
         if (!RiverpodActivationService.getInstance(project).isFileActive(file)) {
@@ -71,15 +72,10 @@ class ShowWidgetDependenciesAction : AnAction() {
         val project = e.project
         val file = e.getData(CommonDataKeys.PSI_FILE)
         val relevant = project != null &&
-                file?.isRelevantDartFile() == true &&
+                file?.isRiverpodDartSourceFile() == true &&
                 RiverpodActivationService.getInstance(project).isFileActive(file)
         e.presentation.isEnabled = relevant
         e.presentation.isVisible = relevant
-    }
-
-    private fun PsiFile.isRelevantDartFile(): Boolean {
-        val fileName = virtualFile?.name ?: name
-        return fileName.endsWith(".dart") && !fileName.endsWith(".g.dart")
     }
 
     private fun analyzeWidgetDependencies(
@@ -149,7 +145,7 @@ class ShowWidgetDependenciesAction : AnAction() {
 
         return FilenameIndex.getAllFilesByExt(project, "dart", scope)
             .asSequence()
-            .filter { file -> file.name.endsWith(".dart") && !file.name.endsWith(".g.dart") }
+            .filter { file -> file.isRiverpodDartSourceFile() }
             .flatMap { file ->
                 checkCanceled()
                 val psiFile = psiManager.findFile(file) ?: return@flatMap emptySequence()

@@ -31,6 +31,16 @@ class RiverpodAnnotationParserTest : StringSpec({
         (declaration.line) shouldBe 5
     }
 
+    "생성된 Dart 파일의 프로바이더 선언은 파싱하지 않는다" {
+        val content = """
+            @riverpod
+            String generated(Ref ref) => 'ignored';
+        """.trimIndent()
+
+        (RiverpodAnnotationParser.parse("lib/user.g.dart", content)) shouldBe emptyList()
+        (RiverpodAnnotationParser.parse("lib/user.freezed.dart", content)) shouldBe emptyList()
+    }
+
     "keepAlive notifier 클래스 선언을 파싱한다" {
         val content = """
             @Riverpod(keepAlive: true)

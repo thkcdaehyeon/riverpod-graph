@@ -1,5 +1,6 @@
 package com.ki960213.riverpodgraph.parser
 
+import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFileName
 import com.ki960213.riverpodgraph.model.RiverpodNaming
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 import com.ki960213.riverpodgraph.model.RiverpodProviderKind
@@ -12,7 +13,7 @@ object RiverpodAnnotationParser {
      * 생성되지 않은 Dart [content] 파일에서 Riverpod 프로바이더 선언을 추출합니다.
      */
     fun parse(filePath: String, content: String): List<RiverpodProviderDeclaration> {
-        if (filePath.endsWith(".g.dart")) {
+        if (!isRiverpodDartSourceFileName(filePath.substringAfterLast('/'))) {
             return emptyList()
         }
 

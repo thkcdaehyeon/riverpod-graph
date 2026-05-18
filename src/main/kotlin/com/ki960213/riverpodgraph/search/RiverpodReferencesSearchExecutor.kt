@@ -19,6 +19,7 @@ import com.ki960213.riverpodgraph.activation.RiverpodActivationService
 import com.ki960213.riverpodgraph.analysis.ProviderUsageScanner
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
+import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
 import com.ki960213.riverpodgraph.index.RIVERPOD_PROVIDER_INDEX_NAME
 import com.ki960213.riverpodgraph.index.RiverpodProviderIndexValue
 
@@ -116,7 +117,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
             else -> FilenameIndex.getAllFilesByExt(project, "dart", indexScope).asSequence()
         }
 
-        return files.filter { it.name.endsWith(".dart") && !it.name.endsWith(".g.dart") }
+        return files.filter { it.isRiverpodDartSourceFile() }
     }
 
     private fun extensionDependenciesFor(
