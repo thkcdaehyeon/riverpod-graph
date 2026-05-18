@@ -54,7 +54,7 @@ object WidgetDependencyAnalyzer {
         val codeMask = dartCodeMask(content)
         val code = codeOnly(content, codeMask)
         val widgetContexts = widgetContexts(content, codeMask, code)
-        val selectedWidget = selectWidget(widgetContexts, caretOffset)
+        val selectedWidget = selectWidget(widgetContexts, caretOffset, content, codeMask)
         val widgetName = selectedWidget?.name ?: fallbackWidgetName(filePath)
         val scanRange = selectedWidget?.buildRange
             ?: selectedWidget?.classRange
@@ -109,9 +109,17 @@ object WidgetDependencyAnalyzer {
     }.toList()
 
     /** 커서 위치가 포함된 위젯을 우선 선택하고 없으면 첫 위젯을 반환합니다. */
-    private fun selectWidget(widgetContexts: List<WidgetContext>, caretOffset: Int?): WidgetContext? {
+    private fun selectWidget(
+        widgetContexts: List<WidgetContext>,
+        caretOffset: Int?,
+        content: String,
+        codeMask: BooleanArray,
+    ): WidgetContext? {
         if (widgetContexts.isEmpty()) {
             return null
+        }
+        caretOffset?.let { offset ->
+            widgetContextForConstructorAtCaret(widgetContexts, content, codeMask, offset)?.let { return it }
         }
         if (caretOffset == null) {
             return widgetContexts.first()
@@ -120,6 +128,58 @@ object WidgetDependencyAnalyzer {
         return widgetContexts.firstOrNull { context -> caretOffset in (context.buildRange ?: IntRange.EMPTY) }
             ?: widgetContexts.firstOrNull { context -> caretOffset in (context.classRange ?: IntRange.EMPTY) }
             ?: widgetContexts.first()
+    }
+
+    /** 같은 파일 안의 위젯 생성자 호출 위에 커서가 있으면 그 위젯 클래스를 선택합니다. */
+    private fun widgetContextForConstructorAtCaret(
+        widgetContexts: List<WidgetContext>,
+        content: String,
+        codeMask: BooleanArray,
+        caretOffset: Int,
+    ): WidgetContext? {
+        val identifier = identifierAt(content, codeMask, caretOffset) ?: return null
+        if (!isConstructorCall(content, codeMask, identifier.end)) return null
+
+        return widgetContexts.firstOrNull { context -> context.name == identifier.name }
+    }
+
+    /** 커서 주변의 Dart 식별자와 범위를 반환합니다. */
+    private fun identifierAt(content: String, codeMask: BooleanArray, caretOffset: Int): IdentifierAt? {
+        if (content.isEmpty()) return null
+
+        var index = caretOffset.coerceIn(0, content.length - 1)
+        if (!codeMask[index] || !isDartIdentifierPart(content[index])) {
+            index = (index - 1).coerceAtLeast(0)
+        }
+        if (!codeMask[index] || !isDartIdentifierPart(content[index])) {
+            return null
+        }
+
+        var start = index
+        while (start > 0 && codeMask[start - 1] && isDartIdentifierPart(content[start - 1])) {
+            start--
+        }
+        var end = index + 1
+        while (end < content.length && codeMask[end] && isDartIdentifierPart(content[end])) {
+            end++
+        }
+
+        return IdentifierAt(content.substring(start, end), end)
+    }
+
+    /** 식별자 뒤가 기본 또는 named 생성자 호출인지 확인합니다. */
+    private fun isConstructorCall(content: String, codeMask: BooleanArray, identifierEnd: Int): Boolean {
+        var index = skipIgnorable(content, codeMask, identifierEnd)
+        if (index < content.length && content[index] == '.') {
+            index = skipIgnorable(content, codeMask, index + 1)
+            if (index >= content.length || !isDartIdentifierPart(content[index])) return false
+            while (index < content.length && isDartIdentifierPart(content[index])) {
+                index++
+            }
+            index = skipIgnorable(content, codeMask, index)
+        }
+
+        return index < content.length && content[index] == '(' && codeMask[index]
     }
 
     /** Stateful 계열 위젯의 State 클래스에서 build 메서드 범위를 찾습니다. */
@@ -172,6 +232,11 @@ object WidgetDependencyAnalyzer {
     /** 위젯 클래스를 찾지 못했을 때 파일명에서 표시용 위젯 이름을 만듭니다. */
     private fun fallbackWidgetName(filePath: String): String =
         filePath.substringAfterLast('/').removeSuffix(".dart").ifBlank { "Widget" }
+
+    private data class IdentifierAt(
+        val name: String,
+        val end: Int,
+    )
 
     private val widgetClassRegex = Regex(
         $$"""\bclass\s+([_$A-Za-z][_$A-Za-z0-9]*)\s+extends\s+""" +

@@ -30,7 +30,7 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
     /** PSI 요소가 거터 마커를 붙일 Riverpod 어노테이션인지 판별합니다. */
     private fun isRiverpodAnnotationElement(element: PsiElement): Boolean {
         val text = element.text
-        if (!isRiverpodAnnotationText(text)) return false
+        if (!isRiverpodAnnotationText(text) && !hasRiverpodAnnotationParent(element)) return false
         if (isCommentOrString(element)) return false
         if (hasCompleteAnnotationParent(element)) return false
 
@@ -66,8 +66,20 @@ class RiverpodProviderLineMarkerProvider : LineMarkerProvider {
         return tokenName.contains("COMMENT") || tokenName.contains("STRING")
     }
 
+    /** Dart PSI가 어노테이션 이름만 leaf로 줄 때 부모의 전체 어노테이션 텍스트를 확인합니다. */
+    private fun hasRiverpodAnnotationParent(element: PsiElement): Boolean {
+        val text = element.text
+        if (text != "riverpod" && text != "Riverpod") return false
+
+        val parent = element.parent ?: return false
+        return parent.textRange.startOffset <= element.textRange.startOffset &&
+                isRiverpodAnnotationText(parent.text)
+    }
+
     /** 부모 요소가 전체 어노테이션을 이미 포함하는 경우 중복 마커를 막습니다. */
     private fun hasCompleteAnnotationParent(element: PsiElement): Boolean {
+        if (hasRiverpodAnnotationParent(element)) return false
+
         val parent = element.parent ?: return false
         if (parent.textRange.startOffset != element.textRange.startOffset) return false
         if (parent.text == element.text) return false

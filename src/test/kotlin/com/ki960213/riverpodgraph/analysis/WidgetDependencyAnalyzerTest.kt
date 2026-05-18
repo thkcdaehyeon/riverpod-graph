@@ -64,6 +64,33 @@ class WidgetDependencyAnalyzerTest : StringSpec({
         (result.childWidgets.map { it.name }) shouldBe listOf("SecondPanel")
     }
 
+    "캐럿이 같은 파일의 위젯 인스턴스 호출 위에 있으면 해당 위젯 클래스를 선택한다" {
+        val content = """
+            class HomeScreen extends StatelessWidget {
+              Widget build(BuildContext context) {
+                return UserTile();
+              }
+            }
+
+            class UserTile extends ConsumerWidget {
+              Widget build(BuildContext context, WidgetRef ref) {
+                final user = ref.watch(userProvider);
+                return Text(user.name);
+              }
+            }
+        """.trimIndent()
+
+        val result = WidgetDependencyAnalyzer.analyze(
+            filePath = "lib/home.dart",
+            content = content,
+            providerNames = setOf("userProvider"),
+            caretOffset = content.indexOf("UserTile()"),
+        )
+
+        (result.widgetName) shouldBe "UserTile"
+        (result.providerNames) shouldBe listOf("userProvider")
+    }
+
     "직접 호출과 ref 확장 멤버에 프로바이더 메타데이터를 사용한다" {
         val content = """
             extension WatchUserX on WidgetRef {

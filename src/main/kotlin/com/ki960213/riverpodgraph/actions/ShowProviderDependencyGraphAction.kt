@@ -16,9 +16,10 @@ import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.analysis.ProviderDependencyAnalyzer
+import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
 import com.ki960213.riverpodgraph.files.isRiverpodDartSourceFile
 import com.ki960213.riverpodgraph.model.RiverpodDependencyEdge
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
@@ -63,13 +64,11 @@ class ShowProviderDependencyGraphAction : AnAction() {
     /** Riverpod 프로바이더 심볼을 사용할 수 있을 때만 이 액션을 활성화합니다. */
     override fun update(e: AnActionEvent) {
         val file = e.getData(CommonDataKeys.PSI_FILE)
-        val editor = e.getData(CommonDataKeys.EDITOR)
-        val element = e.getData(CommonDataKeys.PSI_ELEMENT)
         val project = e.project
         val relevant = project != null &&
                 file?.isRiverpodDartSourceFile() == true &&
                 RiverpodActivationService.getInstance(project).isFileActive(file) &&
-                symbolCandidates(file, editor, element).isNotEmpty()
+                declarationFromContext(e) != null
 
         e.presentation.isEnabled = relevant
         e.presentation.isVisible = relevant
@@ -83,8 +82,21 @@ class ShowProviderDependencyGraphAction : AnAction() {
         val element = e.getData(CommonDataKeys.PSI_ELEMENT)
         val resolver = RiverpodProviderResolver(project)
 
-        return symbolCandidates(file, editor, element)
+        val symbolDeclaration = symbolCandidates(file, editor, element)
             .firstNotNullOfOrNull { symbol -> withAvailableIndex { resolver.findDeclaration(symbol) } }
+        if (symbolDeclaration != null) {
+            return symbolDeclaration
+        }
+
+        val declarations = withAvailableIndex {
+            RiverpodActiveSourceScope.getInstance(project).providerDeclarations()
+        }.orEmpty()
+        return providerDeclarationForContext(
+            content = file.text,
+            caretOffset = editor?.caretModel?.offset,
+            elementRange = element?.textRange?.let { range -> range.startOffset until range.endOffset },
+            declarations = declarations,
+        )
     }
 
     /** 도구 창의 그래프 패널에 프로바이더 의존성 그래프를 표시합니다. */
@@ -144,7 +156,8 @@ class ShowProviderDependencyGraphAction : AnAction() {
             .activeDartFilesInReadAction()
             .associateBy { it.path }
 
-        return declarationPaths.mapNotNull { filePath ->
+        val analysisPaths = (declarationPaths + activeFilesByPath.keys).toCollection(linkedSetOf())
+        return analysisPaths.mapNotNull { filePath ->
             val virtualFile = activeFilesByPath[filePath] ?: LocalFileSystem.getInstance().findFileByPath(filePath)
             val content = virtualFile?.let { sourceText(project, it) }
                 ?: invocationFile.text.takeIf { filePath == invocationPath }
@@ -264,6 +277,14 @@ internal fun providerGraphEdgesForSourceFiles(
     declarations: List<RiverpodProviderDeclaration>,
 ): List<RiverpodDependencyEdge> {
     val sourcesByPath = sourceFiles.distinctBy { it.filePath }.associateBy { it.filePath }
+    val providerNames = declarations.mapTo(linkedSetOf()) { it.providerName }
+    val extensionDependencies = sourcesByPath.values.flatMap { source ->
+        RefExtensionScanner.scan(
+            filePath = source.filePath,
+            content = source.content,
+            providerNames = providerNames,
+        )
+    }.distinct()
     val edges = declarations
         .mapTo(linkedSetOf()) { it.filePath }
         .flatMap { filePath ->
@@ -272,10 +293,32 @@ internal fun providerGraphEdgesForSourceFiles(
                 filePath = filePath,
                 content = source.content,
                 declarations = declarations,
+                extensionDependencies = extensionDependencies,
             )
         }
 
     return ProviderDependencyAnalyzer.markCycles(edges).distinct()
+}
+
+internal fun providerDeclarationForContext(
+    content: String,
+    caretOffset: Int?,
+    elementRange: IntRange?,
+    declarations: List<RiverpodProviderDeclaration>,
+): RiverpodProviderDeclaration? {
+    caretOffset?.let { offset ->
+        declarations.firstOrNull { declaration ->
+            offset in declaration.sourceRange(content.length)
+        }?.let { return it }
+    }
+
+    elementRange?.let { range ->
+        declarations.firstOrNull { declaration ->
+            declaration.textOffset in range
+        }?.let { return it }
+    }
+
+    return null
 }
 
 /** 프로바이더 접근 체인을 스캔할 때 Dart 식별자를 찾습니다. */

@@ -4,19 +4,18 @@ import com.intellij.openapi.application.QueryExecutorBase
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import com.intellij.psi.PsiReference
+import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.util.Processor
-import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.activation.RiverpodActivationService
+import com.ki960213.riverpodgraph.activation.RiverpodActiveSourceScope
 import com.ki960213.riverpodgraph.analysis.ProviderUsageScanner
 import com.ki960213.riverpodgraph.analysis.ProviderUsageScope
 import com.ki960213.riverpodgraph.analysis.RefExtensionDependency
 import com.ki960213.riverpodgraph.analysis.RefExtensionScanner
+import com.ki960213.riverpodgraph.dart.isDartIdentifierPart
 import com.ki960213.riverpodgraph.model.RiverpodProviderDeclaration
 
 /** Dart 파일에서 인덱싱된 Riverpod 프로바이더 참조를 검색합니다. */
@@ -41,7 +40,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
         val activeScope = RiverpodActiveSourceScope.getInstance(project)
         val searchScope = queryParameters.effectiveSearchScope
         val indexScope = searchScope as? GlobalSearchScope ?: GlobalSearchScope.projectScope(project)
-        val providerTarget = providerTargetFor(activeScope, element.text, indexScope) ?: return
+        val providerTarget = providerTargetFor(activeScope, element, indexScope) ?: return
         val psiManager = PsiManager.getInstance(project)
         val extensionDependencies = extensionDependenciesFor(activeScope, psiManager, providerTarget, indexScope)
         val extensionDependenciesByFile = extensionDependencies.groupBy { it.filePath }
@@ -87,18 +86,52 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
     /** 검색할 심볼에 대응하는 프로바이더 이름과 선언 정보를 인덱스에서 구성합니다. */
     private fun providerTargetFor(
         activeScope: RiverpodActiveSourceScope,
-        symbol: String,
+        element: PsiElement,
         scope: GlobalSearchScope,
     ): ProviderTarget? {
-        val declarations = withAvailableIndex { activeScope.providerDeclarations(symbol, scope) }.orEmpty()
-        if (declarations.isEmpty()) {
-            return null
+        for (symbol in symbolCandidates(element)) {
+            val declarations = withAvailableIndex { activeScope.providerDeclarations(symbol, scope) }.orEmpty()
+            if (declarations.isNotEmpty()) {
+                return declarations.toProviderTarget()
+            }
         }
 
-        val providerName = declarations.first().providerName
+        val declarationAtElement = declarationAtElement(activeScope, element, scope) ?: return null
+        val declarations = withAvailableIndex {
+            activeScope.providerDeclarations(declarationAtElement.providerName, scope)
+        }.orEmpty()
+            .ifEmpty { listOf(declarationAtElement) }
+
+        return declarations.toProviderTarget()
+    }
+
+    /** 검색 대상 PSI가 식별자 leaf가 아닐 때도 원본 Provider 선언을 찾아냅니다. */
+    private fun declarationAtElement(
+        activeScope: RiverpodActiveSourceScope,
+        element: PsiElement,
+        scope: GlobalSearchScope,
+    ): RiverpodProviderDeclaration? {
+        val filePath = element.containingFile?.virtualFile?.path ?: element.containingFile?.name ?: return null
+        val elementRange = element.textRange ?: return null
+
+        return withAvailableIndex { activeScope.providerDeclarations(scope) }.orEmpty()
+            .firstOrNull { declaration ->
+                declaration.filePath == filePath && elementRange.contains(declaration.textOffset)
+            }
+    }
+
+    /** PSI 이름과 짧은 텍스트에서 Provider lookup 후보 심볼을 만듭니다. */
+    private fun symbolCandidates(element: PsiElement): List<String> = buildList {
+        (element as? PsiNamedElement)?.name?.takeIf { IDENTIFIER_REGEX.matches(it) }?.let(::add)
+        element.text.takeIf { IDENTIFIER_REGEX.matches(it) }?.let(::add)
+    }.distinct()
+
+    /** 같은 providerName을 가리키는 선언 목록을 검색 대상 모델로 변환합니다. */
+    private fun List<RiverpodProviderDeclaration>.toProviderTarget(): ProviderTarget {
+        val providerName = first().providerName
         return ProviderTarget(
             providerName = providerName,
-            declarations = declarations.filter { declaration -> declaration.providerName == providerName },
+            declarations = filter { declaration -> declaration.providerName == providerName },
         )
     }
 
@@ -190,10 +223,26 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
         val usageElement = psiFile.findElementAt(textOffset) ?: return true
         val reference = RiverpodReference(
             element = usageElement,
-            rangeInElement = TextRange(0, usageElement.textLength),
+            rangeInElement = referenceRangeInElement(usageElement, textOffset),
             providerName = providerName,
         )
         return consumer.process(reference)
+    }
+
+    /** 실제 참조 식별자만 가리키도록 파일 offset을 PSI 요소 내부 범위로 변환합니다. */
+    private fun referenceRangeInElement(element: PsiElement, textOffset: Int): TextRange {
+        val relativeOffset = textOffset - element.textRange.startOffset
+        if (relativeOffset !in 0 until element.textLength) {
+            return TextRange(0, element.textLength)
+        }
+
+        var end = relativeOffset
+        val text = element.text
+        while (end < text.length && isDartIdentifierPart(text[end])) {
+            end++
+        }
+
+        return TextRange(relativeOffset, end.coerceAtLeast(relativeOffset + 1))
     }
 
     /** 인덱스가 아직 준비되지 않은 경우 실패 대신 null을 반환합니다. */
@@ -215,4 +264,7 @@ class RiverpodReferencesSearchExecutor : QueryExecutorBase<PsiReference, Referen
     ) {
         val sourceNames: Set<String> = declarations.mapTo(linkedSetOf()) { declaration -> declaration.sourceName }
     }
+
 }
+
+internal val IDENTIFIER_REGEX = Regex($$"""[_$A-Za-z][_$A-Za-z0-9]*""")

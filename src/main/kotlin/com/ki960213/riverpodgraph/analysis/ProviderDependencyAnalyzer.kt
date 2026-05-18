@@ -15,13 +15,28 @@ object ProviderDependencyAnalyzer {
         filePath: String,
         content: String,
         declarations: List<RiverpodProviderDeclaration>,
+    ): List<RiverpodDependencyEdge> = analyzeFile(
+        filePath = filePath,
+        content = content,
+        declarations = declarations,
+        extensionDependencies = null,
+    )
+
+    /**
+     * [filePath]에 선언된 프로바이더가 소유한 의존성을 외부 Ref 확장 문맥까지 포함해 분석합니다.
+     */
+    fun analyzeFile(
+        filePath: String,
+        content: String,
+        declarations: List<RiverpodProviderDeclaration>,
+        extensionDependencies: List<RefExtensionDependency>?,
     ): List<RiverpodDependencyEdge> {
         val providers = declarations.map { it.providerName }.toSet()
         if (providers.isEmpty() || content.isEmpty()) {
             return emptyList()
         }
 
-        val extensionDependencies = RefExtensionScanner.scan(
+        val resolvedExtensionDependencies = extensionDependencies ?: RefExtensionScanner.scan(
             filePath = filePath,
             content = content,
             providerNames = providers,
@@ -29,7 +44,7 @@ object ProviderDependencyAnalyzer {
         val usageScope = ProviderUsageScope(
             providerNames = providers,
             declarations = declarations,
-            extensionDependencies = extensionDependencies,
+            extensionDependencies = resolvedExtensionDependencies,
         )
 
         return declarations

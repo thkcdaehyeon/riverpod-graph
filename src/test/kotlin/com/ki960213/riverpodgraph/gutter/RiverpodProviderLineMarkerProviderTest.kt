@@ -39,6 +39,11 @@ class RiverpodProviderLineMarkerProviderTest : BasePlatformTestCase() {
         )
     }
 
+    fun `test 어노테이션 이름 leaf와 전체 어노테이션 부모로 마커를 만든다`() {
+        assertNotNull(provider.getLineMarkerInfo(psi("riverpod", parentText = "@riverpod")))
+        assertNotNull(provider.getLineMarkerInfo(psi("Riverpod", parentText = "@Riverpod(keepAlive: true)")))
+    }
+
     fun `test 주석이나 문자열 안에는 마커를 만들지 않는다`() {
         assertNull(provider.getLineMarkerInfo(psi("@riverpod", parentText = "// @riverpod")))
         assertNull(provider.getLineMarkerInfo(psi("@Riverpod", parentText = "/* @Riverpod */")))
