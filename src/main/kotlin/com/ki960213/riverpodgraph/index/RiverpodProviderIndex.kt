@@ -15,9 +15,7 @@ class RiverpodProviderIndex : FileBasedIndexExtension<String, RiverpodProviderIn
     /** Dart 파일의 Riverpod 프로바이더 선언에 대한 인덱스 항목을 만듭니다. */
     override fun getIndexer(): DataIndexer<String, RiverpodProviderIndexValue, FileContent> = DataIndexer { input ->
         val path = input.file.path
-        if (!input.file.isRiverpodDartSourceFile()) {
-            return@DataIndexer emptyMap()
-        }
+        if (!input.file.isRiverpodDartSourceFile()) return@DataIndexer emptyMap()
 
         val values = mutableMapOf<String, RiverpodProviderIndexValue>()
         for (declaration in RiverpodAnnotationParser.parse(path, input.contentAsText.toString())) {

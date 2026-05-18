@@ -13,16 +13,14 @@ object RiverpodAnnotationParser {
      * 생성되지 않은 Dart [content] 파일에서 Riverpod 프로바이더 선언을 추출합니다.
      */
     fun parse(filePath: String, content: String): List<RiverpodProviderDeclaration> {
-        if (!isRiverpodDartSourceFileName(filePath.substringAfterLast('/'))) {
-            return emptyList()
-        }
+        if (!isRiverpodDartSourceFileName(filePath.substringAfterLast('/'))) return emptyList()
 
         val codeMask = dartCodeMask(content)
         return annotationRegex.findAll(content).mapNotNull { match ->
-            if (!isCodeRange(codeMask, match.range)) {
-                return@mapNotNull null
-            }
+            if (match.range.none { codeMask[it] }) return@mapNotNull null
 
+            // groupValues[0]은 전체 매칭된 문자열(@riverpod 또는 @Riverpod),
+            // groupValues[1]은 첫 번째 캡처 그룹인 어노테이션 이름(riverpod 또는 Riverpod)을 가져옵니다
             val annotationName = match.groupValues[1]
             val annotationEnd = annotationEnd(content, codeMask, match.range.last + 1) ?: return@mapNotNull null
             val declarationOffset = skipMetadata(content, codeMask, annotationEnd.index)
@@ -376,6 +374,12 @@ object RiverpodAnnotationParser {
         return null
     }
 
+    /**
+     * Dart 코드에서 주석과 문자열을 제외한 실제 코드 영역을 표시하는 불린 배열을 생성합니다.
+     * 
+     * @param content Dart 파일 내용
+     * @return 각 문자가 코드인지 여부를 나타내는 배열 (true = 코드, false = 주석/문자열)
+     */
     private fun dartCodeMask(content: String): BooleanArray {
         val codeMask = BooleanArray(content.length) { true }
         var index = 0
@@ -406,6 +410,13 @@ object RiverpodAnnotationParser {
         return codeMask
     }
 
+    /**
+     * 중첩된 블록 주석(/* */)의 끝 위치를 찾습니다.
+     * 
+     * @param content Dart 파일 내용
+     * @param start 블록 주석 시작 위치
+     * @return 블록 주석 종료 위치 (종료되지 않은 경우 파일 끝)
+     */
     private fun blockCommentEnd(content: String, start: Int): Int {
         var depth = 0
         var index = start
@@ -431,6 +442,13 @@ object RiverpodAnnotationParser {
         return content.length
     }
 
+    /**
+     * 문자열 리터럴의 끝 위치를 찾습니다. 일반, raw, 삼중 따옴표 문자열을 모두 처리합니다.
+     * 
+     * @param content Dart 파일 내용
+     * @param start 문자열 시작 위치 (따옴표 위치)
+     * @return 문자열 종료 위치 (종료되지 않은 경우 파일 끝)
+     */
     private fun stringEnd(content: String, start: Int): Int {
         val quote = content[start]
         val triple = content.startsWith("$quote$quote$quote", start)
@@ -459,14 +477,17 @@ object RiverpodAnnotationParser {
         return content.length
     }
 
+    /**
+     * 지정된 범위를 비코드 영역(주석 또는 문자열)으로 표시합니다.
+     * 
+     * @param start 비코드 영역 시작 인덱스
+     * @param end 비코드 영역 종료 인덱스
+     */
     private fun BooleanArray.markIgnored(start: Int, end: Int) {
         for (index in start until end.coerceAtMost(size)) {
             this[index] = false
         }
     }
-
-    private fun isCodeRange(codeMask: BooleanArray, range: IntRange): Boolean =
-        range.all { codeMask[it] }
 
     private fun codeSlice(content: String, codeMask: BooleanArray, start: Int, end: Int): String =
         buildString(end - start) {
